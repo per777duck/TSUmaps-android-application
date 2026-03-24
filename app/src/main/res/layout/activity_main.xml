@@ -30,7 +30,7 @@
         android:layout_width="212dp"
         android:layout_height="137dp"
         android:text="Switch"
-        tools:layout_editor_absoluteX="106dp"
-        tools:layout_editor_absoluteY="352dp" />
+        tools:layout_editor_absoluteX="99dp"
+        tools:layout_editor_absoluteY="349dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
