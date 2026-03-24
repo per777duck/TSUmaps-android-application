@@ -4,7 +4,7 @@ import android.os.Bundle
 import android.view.animation.OvershootInterpolator
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.Crossfade // ИМПОРТ ДЛЯ ПЛАВНОГО ПЕРЕХОДА
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// 1. ГЛАВНАЯ АКТИВНОСТЬ (без изменений)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,29 +37,22 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// 2. БЛОК НАВИГАЦИИ С ПЛАВНЫМ ПЕРЕХОДОМ
 @Composable
 fun AppNavigation() {
-    // Состояние, хранящее текущий экран
     var currentScreen by remember { mutableStateOf("splash") }
 
-    // --- МАГИЯ ЗДЕСЬ ---
-    // Crossfade автоматически анимирует смену экранов
     Crossfade(
         targetState = currentScreen,
-        // Задаем длительность перехода (например, 800 миллисекунд)
         animationSpec = tween(durationMillis = 800, easing = LinearOutSlowInEasing),
         label = "screen_transition"
     ) { screen ->
-        // В зависимости от targetState рисуем нужный Composable
         when (screen) {
             "splash" -> SplashScreen(onFinished = { currentScreen = "main" })
-            "main" -> MainMenuScreen() // Твой экран меню
+            "main" -> MainMenuScreen()
         }
     }
 }
 
-// 3. СФОРМИРОВАННЫЙ SPLASH SCREEN (все, что мы сделали ранее)
 @Composable
 fun SplashScreen(onFinished: () -> Unit) {
     val introAlpha = remember { Animatable(0f) }
@@ -99,7 +91,7 @@ fun SplashScreen(onFinished: () -> Unit) {
         animationSpec = infiniteRepeatable(
             animation = keyframes {
                 durationMillis = 2500
-                0f at 600 with FastOutSlowInEasing // Задержка хвоста
+                0f at 600 with FastOutSlowInEasing
                 360f at 2500
             },
             repeatMode = RepeatMode.Restart
@@ -111,9 +103,8 @@ fun SplashScreen(onFinished: () -> Unit) {
         launch { introAlpha.animateTo(1f, tween(1000)) }
         launch { introScale.animateTo(1f, tween(1200, easing = OvershootInterpolator(1.5f).toEasing())) }
 
-        // Ждем 6 секунд, пока крутится анимация загрузки
-        delay(6000)
-        onFinished() // Переключаем экран
+        delay(3000)
+        onFinished()
     }
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -124,14 +115,12 @@ fun SplashScreen(onFinished: () -> Unit) {
                 .scale(introScale.value),
             contentAlignment = Alignment.Center
         ) {
-            // ЛОГО ТГУ (Уменьшенный)
             Image(
-                painter = painterResource(id = R.drawable.tgu_logo), // Твой файл
+                painter = painterResource(id = R.drawable.tgu_logo),
                 contentDescription = null,
                 modifier = Modifier.size(130.dp)
             )
 
-            // ЗМЕЙКА-ЛОАДЕР НА КАНВАСЕ
             Canvas(modifier = Modifier.size(230.dp)) {
                 rotate(baseRotation) {
                     val sweep = if (headAngle >= tailAngle) {
@@ -141,7 +130,7 @@ fun SplashScreen(onFinished: () -> Unit) {
                     }
 
                     drawArc(
-                        color = Color(0xFF003D7C), // Синий ТГУ
+                        color = Color(0xFF003D7C),
                         startAngle = tailAngle - 90f,
                         sweepAngle = sweep.coerceAtLeast(8f),
                         useCenter = false,
@@ -153,7 +142,6 @@ fun SplashScreen(onFinished: () -> Unit) {
     }
 }
 
-// 4. ГЛАВНОЕ МЕНЮ (для примера)
 @Composable
 fun MainMenuScreen() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -161,5 +149,4 @@ fun MainMenuScreen() {
     }
 }
 
-// Вспомогательная функция (без изменений)
 fun android.view.animation.Interpolator.toEasing() = Easing { x -> getInterpolation(x) }
