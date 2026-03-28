@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -30,6 +31,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.unit.IntSize
 
 val TGU_Blue = Color(0xFF003D7C)
 val TGU_Gold = Color(0xFFC5A358)
@@ -116,7 +129,6 @@ fun MainScreenWithNavigation() {
             )
 
             Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                // Используем стандартный AnimatedContent без ошибок API
                 AnimatedContent(
                     targetState = selectedTab,
                     label = "tab_transition"
@@ -146,6 +158,65 @@ fun AlgorithmCard(tab: AlgorithmTab) {
             Text("Интерфейс для алгоритма ${tab.title} будет здесь", color = Color.Gray)
         }
     }
+}
+
+enum class MetricType { EUCLIDEAN, PEDESTRIAN }
+
+data class Place(
+    val id: Int,
+    val name: String,
+    val position: Offset,
+    val clusterization: Map<MetricType, Int>
+)
+
+val ClusterColors = listOf(
+    Color(0xFFEF5350),
+    Color(0xFF42A5F5),
+    Color(0xFF66BB6A),
+    Color(0xFFFFEE58),
+    Color(0xFFAB47BC),
+    Color(0xFFFFA726),
+    Color(0xFF26C6DA),
+    Color(0xFF78909C),
+    Color(0xFF8D6E63),
+    Color(0xFFEC407A),
+    Color(0xFF26A69A),
+    Color(0xFFD4E157),
+    Color(0xFF5C6BC0),
+    Color(0xFFFF7043),
+    Color(0xFF9CCC65)
+)
+
+@Composable
+fun MapClusteringScreen(
+    places: List<Place>,
+    mapImageId: Int
+){
+    var scale by remember { mutableStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+
+    val imageBitmap = ImageBitmap.imageResource(id = R.drawable.map_original)
+    val imageSize = IntSize(imageBitmap.width, imageBitmap.height)
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+            .pointerInput(Unit){
+                detectTransformGestures { _, pan, zoom, _ ->
+                    val newScale = (scale * zoom).coerceIn(0.5f, 5f)
+
+                    val maxX = (imageSize.width * newScale - size.width).coerceAtLeast(0f)
+                    val maxY = (imageSize.height * newScale - size.height).coerceAtLeast(0f)
+
+                    val newOffset = Offset(
+                        x = (offset.x + pan.x).coerceIn(-maxX, 0f),
+                        y = (offset.y + pan.y).coerceIn(-maxY, 0f)
+                    )
+
+                    scale = newScale
+                    offset = newOffset
+                }
+            }
+    )
 }
 
 @Composable
