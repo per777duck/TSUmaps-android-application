@@ -31,14 +31,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.imageResource
@@ -107,7 +103,7 @@ fun MainScreenWithNavigation() {
                 containerColor = Color.White,
                 tonalElevation = 8.dp
             ) {
-                AlgorithmTab.values().forEach { tab ->
+                AlgorithmTab.entries.forEach { tab ->
                     NavigationBarItem(
                         selected = selectedTab == tab,
                         onClick = { selectedTab = tab },
@@ -148,6 +144,11 @@ fun AlgorithmCard(tab: AlgorithmTab) {
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
+//        РАСКОМЕНТИТЬ
+
+//        if (tab == AlgorithmTab.Clustering){
+//            MapClusteringScreen()
+//        }
         Column(
             modifier = Modifier.padding(24.dp).fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -166,7 +167,8 @@ data class Place(
     val id: Int,
     val name: String,
     val position: Offset,
-    val clusterization: Map<MetricType, Int>
+    val clusterId: Int,
+    val metric: MetricType
 )
 
 val ClusterColors = listOf(
@@ -190,12 +192,13 @@ val ClusterColors = listOf(
 @Composable
 fun MapClusteringScreen(
     places: List<Place>,
-    mapImageId: Int
 ){
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
 
-    val imageBitmap = ImageBitmap.imageResource(id = R.drawable.map_original)
+    //ПОМЕНЯТЬ MAP НА MAP_ORIGINAL
+
+    val imageBitmap = ImageBitmap.imageResource(id = R.drawable.map)
     val imageSize = IntSize(imageBitmap.width, imageBitmap.height)
 
     Box(
@@ -216,7 +219,36 @@ fun MapClusteringScreen(
                     offset = newOffset
                 }
             }
-    )
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()){
+            withTransform({
+                translate(left = offset.x, top = offset.y)
+                scale(scale, scale, pivot = Offset.Zero)
+            }) {
+                drawImage(image = imageBitmap, dstSize = imageSize)
+                places.forEach { place ->
+                    val clusterColor = ClusterColors[place.clusterId % ClusterColors.size]
+
+                    val basedRadius = 15f
+                    val adaptedRadius = basedRadius / scale
+
+                    drawCircle(
+                        color = clusterColor,
+                        radius = adaptedRadius,
+                        center = place.position,
+                        alpha = 0.8f
+                    )
+
+                    drawCircle(
+                        color = Color.Black,
+                        radius = adaptedRadius,
+                        center = place.position,
+                        style = Stroke(width = 2f / scale)
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
