@@ -11,25 +11,33 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 
 val TGU_Blue = Color(0xFF003D7C)
 val TGU_Gold = Color(0xFFC5A358)
@@ -111,23 +119,33 @@ fun MainScreenWithNavigation() {
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             CenterAlignedTopAppBar(
-                title = { Text("Навигатор ТГУ", fontWeight = FontWeight.Bold, color = TGU_Blue) },
+                title = { Text("Навигатор ТГУ", fontWeight = FontWeight.Bold, color = TGU_Blue)},
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
             )
 
-            Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                // Используем стандартный AnimatedContent без ошибок API
+            Box(modifier = Modifier.fillMaxSize().padding(16.dp))
+            {
                 AnimatedContent(
                     targetState = selectedTab,
                     label = "tab_transition"
-                ) { targetTab ->
-                    AlgorithmCard(targetTab)
+                )
+                { targetTab ->
+                    when (targetTab) {
+                        AlgorithmTab.Navigation -> {
+                            NavigatorScreen()
+                        }
+
+                        else -> {
+                            AlgorithmCard(targetTab)
+                        }
+                    }
                 }
             }
         }
     }
 }
 
+fun android.view.animation.Interpolator.toEasing() = Easing { x -> getInterpolation(x) }
 @Composable
 fun AlgorithmCard(tab: AlgorithmTab) {
     Card(
@@ -201,4 +219,163 @@ fun SplashScreen(onFinished: () -> Unit) {
     }
 }
 
-fun android.view.animation.Interpolator.toEasing() = Easing { x -> getInterpolation(x) }
+fun parseNode(input: String): Node {
+    return try {
+        val parts = input.split(",")
+        Node(parts[0].trim().toInt(), parts[1].trim().toInt())
+    } catch (e: Exception) {
+        Node(0, 0) // Значение по умолчанию при ошибке
+    }
+}
+
+@Composable
+fun InputSection(
+    fromText: String, onFromChange: (String) -> Unit,
+    toText: String, onToChange: (String)->Unit,
+    onBuildClick: ()->Unit)
+{
+    Card(
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+    {
+        Column(modifier = Modifier.padding(10.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            Text("Построить маршрут", style = MaterialTheme.typography.titleLarge)
+
+            Row(verticalAlignment = Alignment.CenterVertically)
+            {
+                Text("Откуда: ", modifier = Modifier.width(70.dp))
+                TextField(
+                    value = fromText,
+                    onValueChange = onFromChange,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically)
+            {
+                Text("Куда: ", modifier = Modifier.width(70.dp))
+                TextField(
+                    value = toText,
+                    onValueChange = onToChange,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Button(
+                onClick = onBuildClick,
+                modifier = Modifier.fillMaxWidth().height(30.dp)
+            )
+            {
+                Text("ПУСК")
+            }
+        }
+    }
+}
+@Composable
+fun NavigatorScreen()
+{
+    val scope = rememberCoroutineScope()
+
+    var fromText by remember {mutableStateOf("0,0")}
+    var toText by remember {mutableStateOf("50,50")}
+
+    var currentPath by remember {mutableStateOf <List<Node>>(emptyList())}
+
+    val grid = remember { Array(100) { IntArray(100) { 1 } } }
+    val algorithm = remember { AStarAlgorithm(grid) }
+
+    Column(modifier = Modifier.fillMaxSize())
+    {
+        MapSection(path = currentPath,modifier = Modifier.weight(1f))
+        InputSection(
+            fromText = fromText,
+            onFromChange = {fromText = it},
+            toText =toText,
+            onToChange = {toText = it},
+            onBuildClick = {
+                scope.launch(Dispatchers.Default) {
+                    val startNode = parseNode(fromText)
+                    val endNode = parseNode(toText)
+
+                    algorithm.findPath(
+                        start = startNode,
+                        end = endNode,
+                        speedMs = 30L
+                    ) { state ->
+                        currentPath = state.currentPath
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun MapSection(path: List<Node>,modifier: Modifier = Modifier)
+{
+    val mapShape = RoundedCornerShape(24.dp)
+    Card(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp),
+        shape = mapShape,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        var scale by remember { mutableStateOf(1f) }
+        var offset by remember { mutableStateOf(Offset.Zero) }
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .clip(RectangleShape)
+                .pointerInput(Unit)
+                {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        scale = (scale * zoom).coerceIn(1f, 5f)
+                        offset += pan * scale
+                    }
+                }
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offset.x,
+                        translationY = offset.y
+                    )
+            )
+            {
+                Image(
+                    painter = painterResource(id = R.drawable.map_original),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.FillBounds
+
+                )
+
+                Canvas(modifier = modifier.fillMaxSize())
+                {
+                    if (path.isNotEmpty()) {
+                        val scaleX = size.width / 100f
+                        val scaleY = size.height / 100f
+
+                        val androidPath = androidx.compose.ui.graphics.Path().apply {
+
+                            moveTo(path[0].x * scaleX, path[0].y * scaleY)
+                            path.forEach { node ->
+                                lineTo(node.x * scaleX, node.y * scaleY)
+                            }
+                        }
+                        drawPath(
+                            path = androidPath,
+                            color = Color.Red,
+                            style = Stroke(width = 5f / scale)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
