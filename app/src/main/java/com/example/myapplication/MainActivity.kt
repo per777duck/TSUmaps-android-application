@@ -39,6 +39,13 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.unit.IntSize
+import com.example.myapplication.algorithms.KmeansAlgorithm
+import com.example.myapplication.algorithms.models.EuclideanMetric
+import com.example.myapplication.data_base.listOfVenues
+import com.example.myapplication.data_base.Venue
+import com.example.myapplication.algorithms.models.Point
+import com.example.myapplication.data_base.VenueWithComparison
+import com.example.myapplication.algorithms.models.AStarMetric
 
 val TGU_Blue = Color(0xFF003D7C)
 val TGU_Gold = Color(0xFFC5A358)
@@ -144,11 +151,9 @@ fun AlgorithmCard(tab: AlgorithmTab) {
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-//        РАСКОМЕНТИТЬ
-
-//        if (tab == AlgorithmTab.Clustering){
-//            MapClusteringScreen()
-//        }
+        if (tab == AlgorithmTab.Clustering){
+            MapClusteringScreen(listOfVenues)
+        }
         Column(
             modifier = Modifier.padding(24.dp).fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -160,16 +165,6 @@ fun AlgorithmCard(tab: AlgorithmTab) {
         }
     }
 }
-
-enum class MetricType { EUCLIDEAN, PEDESTRIAN }
-
-data class Place(
-    val id: Int,
-    val name: String,
-    val position: Offset,
-    val clusterId: Int,
-    val metric: MetricType
-)
 
 val ClusterColors = listOf(
     Color(0xFFEF5350),
@@ -190,16 +185,34 @@ val ClusterColors = listOf(
 )
 
 @Composable
-fun MapClusteringScreen(
-    places: List<Place>,
-){
+fun MapClusteringScreen(venues: List<Venue>){
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
 
-    //ПОМЕНЯТЬ MAP НА MAP_ORIGINAL
-
-    val imageBitmap = ImageBitmap.imageResource(id = R.drawable.map)
+    val imageBitmap = ImageBitmap.imageResource(id = R.drawable.map_original)
     val imageSize = IntSize(imageBitmap.width, imageBitmap.height)
+
+    var venuesWithComparisonState by remember { mutableStateOf<List<VenueWithComparison>>(emptyList()) }
+
+    fun Venue.toPoint(): Point = Point(
+        id = this.id,
+        x = this.position.x.toDouble(),
+        y = this.position.y.toDouble()
+    )
+
+    LaunchedEffect(venues) {
+        val points = venues.map{ it.toPoint() }
+
+        val kMeans = KmeansAlgorithm(2)
+        val clusterEuc = kMeans.run(points, EuclideanMetric())
+        val clusterAst = kMeans.run(points, AStarMetric())
+
+        venuesWithComparisonState = venues.map { venue ->
+            val idEuc = clusterEuc.find {clus -> clus.points.any {it.id == venue.id} }?.id ?: -1
+            val idAst = clusterAst.find {clus -> clus.points.any {it.id == venue.id} }?.id ?: -1
+            VenueWithComparison(venue, idEuc, idAst)
+        }
+    }
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -226,24 +239,22 @@ fun MapClusteringScreen(
                 scale(scale, scale, pivot = Offset.Zero)
             }) {
                 drawImage(image = imageBitmap, dstSize = imageSize)
-                places.forEach { place ->
-                    val clusterColor = ClusterColors[place.clusterId % ClusterColors.size]
 
-                    val basedRadius = 15f
-                    val adaptedRadius = basedRadius / scale
+                venuesWithComparisonState.forEach { res ->
+                    val isDifferent = res.clusterEuclidean != res.clusterAStar
+                    val isExist = res.clusterAStar == -1 || res.clusterEuclidean == -1
 
-                    drawCircle(
-                        color = clusterColor,
-                        radius = adaptedRadius,
-                        center = place.position,
-                        alpha = 0.8f
-                    )
+                    val dotColor = when{
+                        isExist -> Color.Black
+                        isDifferent -> Color.Magenta
+                        else -> ClusterColors[res.venue.clusterId % ClusterColors.size]
+                    }
 
                     drawCircle(
-                        color = Color.Black,
-                        radius = adaptedRadius,
-                        center = place.position,
-                        style = Stroke(width = 2f / scale)
+                        color = dotColor,
+                        radius = if (isDifferent) 25f / scale else 15f / scale,
+                        center = res.venue.position,
+                        alpha = 0.9f
                     )
                 }
             }

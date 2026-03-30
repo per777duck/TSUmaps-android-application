@@ -8,7 +8,7 @@ import kotlin.math.sqrt
 
 class KmeansAlgorithm(
     private val k: Int,
-    private val maxIterations: Int = 100
+    private val maxIterations: Int = 1000
 ) {
     private fun convergence(
         oldCentroids: List<Point>,
@@ -32,7 +32,7 @@ class KmeansAlgorithm(
                 var minDist = Double.MAX_VALUE
                 var bestClusterId = 0
                 clusters.forEachIndexed { index, cluster ->
-                    val dist = metric.CalculatingDistance(cluster.centroid, point)
+                    val dist = metric.calculatingDistance(cluster.centroid, point)
                     if (minDist > dist){
                         minDist = dist
                         bestClusterId = index

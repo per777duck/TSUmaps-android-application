@@ -1,7 +1,10 @@
 package com.example.myapplication.algorithms.models
 
+import kotlin.math.pow
+import kotlin.math.sqrt
+
 class AStarMetric : IDistanceMetrics {
     override fun calculatingDistance(p1: Point, p2: Point): Double {
-        TODO("Дописать A* алгоритм и сделать вызов здесь")
+        return sqrt((p1.x - p2.x).pow(2) + (p1.y - p2.y).pow(2))
     }
 }
