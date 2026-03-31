@@ -44,8 +44,9 @@ import com.example.myapplication.algorithms.models.EuclideanMetric
 import com.example.myapplication.data_base.listOfVenues
 import com.example.myapplication.data_base.Venue
 import com.example.myapplication.algorithms.models.Point
-import com.example.myapplication.data_base.VenueWithComparison
 import com.example.myapplication.algorithms.models.AStarMetric
+import com.example.myapplication.data_base.MetricType
+import com.example.myapplication.data_base.VenueType
 
 val TGU_Blue = Color(0xFF003D7C)
 val TGU_Gold = Color(0xFFC5A358)
@@ -104,7 +105,25 @@ enum class AlgorithmTab(val title: String, val icon: ImageVector) {
 fun MainScreenWithNavigation() {
     var selectedTab by remember { mutableStateOf(AlgorithmTab.Navigation) }
 
+    var isComparisonMode by remember { mutableStateOf(false) }
+    var selectedType by remember { mutableStateOf<VenueType?>(null) }
+    var selectedMetric by remember { mutableStateOf(MetricType.EUCLIDEAN) }
+
+    var showSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+
     Scaffold(
+        floatingActionButton = {
+            if (selectedTab == AlgorithmTab.Clustering) {
+                FloatingActionButton(
+                    onClick = { showSheet = true },
+                    containerColor = TGU_Blue,
+                    contentColor = Color.White
+                ) {
+                    Icon(Icons.Default.FilterList, contentDescription = "Фильтры")
+                }
+            }
+        },
         bottomBar = {
             NavigationBar(
                 containerColor = Color.White,
@@ -132,19 +151,49 @@ fun MainScreenWithNavigation() {
             )
 
             Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                AnimatedContent(
-                    targetState = selectedTab,
-                    label = "tab_transition"
-                ) { targetTab ->
-                    AlgorithmCard(targetTab)
+                if (selectedTab == AlgorithmTab.Clustering) {
+                    AlgorithmCard(
+                        tab = selectedTab,
+                        venueType = selectedType,
+                        metricType = selectedMetric,
+                        isComparisonMode = isComparisonMode
+                    )
                 }
+                else {
+                    AlgorithmCard(
+                        tab = selectedTab,
+                        venueType = selectedType,
+                        metricType = selectedMetric
+                    )
+                }
+            }
+        }
+        if (showSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showSheet = false },
+                sheetState = sheetState,
+                containerColor = Color.White
+            ) {
+                FilterSettingsContent(
+                    selectedType = selectedType,
+                    onVenueTypeChange = { selectedType = it },
+                    selectedMetric = selectedMetric,
+                    onMetricChange = { selectedMetric = it },
+                    isComparisonMode = isComparisonMode,
+                    onComparisonModeChange = { isComparisonMode = it }
+                )
             }
         }
     }
 }
 
 @Composable
-fun AlgorithmCard(tab: AlgorithmTab) {
+fun AlgorithmCard(
+    tab: AlgorithmTab,
+    venueType: VenueType?,
+    metricType: MetricType,
+    isComparisonMode: Boolean = false
+) {
     Card(
         modifier = Modifier.fillMaxSize(),
         shape = MaterialTheme.shapes.extraLarge,
@@ -152,16 +201,23 @@ fun AlgorithmCard(tab: AlgorithmTab) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         if (tab == AlgorithmTab.Clustering){
-            MapClusteringScreen(listOfVenues)
+            MapClusteringScreen(
+                venues = listOfVenues,
+                selectedType = venueType,
+                selectedMetric = metricType,
+                isComparisonMode = isComparisonMode
+            )
         }
-        Column(
-            modifier = Modifier.padding(24.dp).fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(tab.title, style = MaterialTheme.typography.headlineSmall, color = TGU_Blue)
-            Spacer(modifier = Modifier.height(20.dp))
+        else {
+            Column(
+                modifier = Modifier.padding(24.dp).fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(tab.title, style = MaterialTheme.typography.headlineSmall, color = TGU_Blue)
+                Spacer(modifier = Modifier.height(20.dp))
 
-            Text("Интерфейс для алгоритма ${tab.title} будет здесь", color = Color.Gray)
+                Text("Интерфейс для алгоритма ${tab.title} будет здесь", color = Color.Gray)
+            }
         }
     }
 }
@@ -184,15 +240,93 @@ val ClusterColors = listOf(
     Color(0xFF9CCC65)
 )
 
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun MapClusteringScreen(venues: List<Venue>){
+fun FilterSettingsContent(
+    selectedType: VenueType?,
+    onVenueTypeChange: (VenueType?) -> Unit,
+    selectedMetric: MetricType,
+    onMetricChange: (MetricType) -> Unit,
+    isComparisonMode: Boolean,
+    onComparisonModeChange: (Boolean) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .padding(bottom = 32.dp)
+    ) {
+        Text("Настройки кластеризации", style = MaterialTheme.typography.headlineSmall, color = TGU_Blue)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text("Тип заведений:", style = MaterialTheme.typography.labelLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = selectedType == null,
+                onClick = { onVenueTypeChange(null) },
+                label = { Text("Все") }
+            )
+            VenueType.entries.forEach { type ->
+                FilterChip(
+                    selected = selectedType == type,
+                    onClick = { onVenueTypeChange(type) },
+                    label = { when(type){
+                        VenueType.FOOD -> Text("Поесть")
+                        VenueType.COWORKING -> Text("Рабочая зона")
+                        VenueType.SIGHTSEEING -> Text("Достопримечетельности")
+                    }}
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text("Метрика расстояния:", style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MetricType.entries.forEach { metric ->
+                FilterChip(
+                    selected = selectedMetric == metric,
+                    onClick = { onMetricChange(metric) },
+                    label = { when(metric){
+                        MetricType.EUCLIDEAN -> Text("По прямой")
+                        MetricType.ASTAR -> Text("По дорожам")
+                    } }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = { onComparisonModeChange(!isComparisonMode) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isComparisonMode) TGU_Gold else TGU_Blue
+            )
+        ) {
+            Icon(Icons.Default.Compare, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(if (isComparisonMode) "Выключить сравнение" else "Сравнить Евклид vs A*")
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun MapClusteringScreen(
+    venues: List<Venue>,
+    selectedType: VenueType?,
+    selectedMetric: MetricType,
+    isComparisonMode: Boolean = false
+){
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
 
     val imageBitmap = ImageBitmap.imageResource(id = R.drawable.map_original)
     val imageSize = IntSize(imageBitmap.width, imageBitmap.height)
 
-    var venuesWithComparisonState by remember { mutableStateOf<List<VenueWithComparison>>(emptyList()) }
+    var primaryClusters by remember { mutableStateOf<List<Pair<Venue, Int>>>(emptyList()) }
+    var secondaryClusters by remember { mutableStateOf<List<Pair<Venue, Int>>>(emptyList()) }
 
     fun Venue.toPoint(): Point = Point(
         id = this.id,
@@ -200,17 +334,54 @@ fun MapClusteringScreen(venues: List<Venue>){
         y = this.position.y.toDouble()
     )
 
-    LaunchedEffect(venues) {
-        val points = venues.map{ it.toPoint() }
+    LaunchedEffect(
+        venues,
+        selectedMetric,
+        selectedType,
+    ) {
+        val filteredVenues = if (selectedType == null){
+            venues
+        }
+        else{
+            venues.filter{ it.type == selectedType}
+        }
+
+        if (filteredVenues.isEmpty()){
+            primaryClusters = emptyList()
+            secondaryClusters = emptyList()
+            return@LaunchedEffect
+        }
+
+        val points = filteredVenues.map{ it.toPoint() }
+
+        val metric1 = when(selectedMetric){
+            MetricType.EUCLIDEAN -> EuclideanMetric()
+            MetricType.ASTAR -> AStarMetric()
+        }
 
         val kMeans = KmeansAlgorithm(2)
-        val clusterEuc = kMeans.run(points, EuclideanMetric())
-        val clusterAst = kMeans.run(points, AStarMetric())
+        val res1 = kMeans.run(points, metric1)
 
-        venuesWithComparisonState = venues.map { venue ->
-            val idEuc = clusterEuc.find {clus -> clus.points.any {it.id == venue.id} }?.id ?: -1
-            val idAst = clusterAst.find {clus -> clus.points.any {it.id == venue.id} }?.id ?: -1
-            VenueWithComparison(venue, idEuc, idAst)
+        primaryClusters = filteredVenues.map{
+            v -> v to (res1.find {
+                c -> c.points.any{it.id == v.id}
+                }?.id ?: -1
+            )}
+
+        if (isComparisonMode){
+            val metric2 = if (selectedMetric == MetricType.EUCLIDEAN){
+                EuclideanMetric()
+            }
+            else {
+                AStarMetric()
+            }
+
+            val res2 = kMeans.run(points, metric2)
+            secondaryClusters = filteredVenues.map {
+                v -> v to (res2.find {
+                    c -> c.points.any{it.id == v.id}
+                    }?.id ?: -1
+                )}
         }
     }
 
@@ -240,22 +411,42 @@ fun MapClusteringScreen(venues: List<Venue>){
             }) {
                 drawImage(image = imageBitmap, dstSize = imageSize)
 
-                venuesWithComparisonState.forEach { res ->
-                    val isDifferent = res.clusterEuclidean != res.clusterAStar
-                    val isExist = res.clusterAStar == -1 || res.clusterEuclidean == -1
-
-                    val dotColor = when{
-                        isExist -> Color.Black
-                        isDifferent -> Color.Magenta
-                        else -> ClusterColors[res.venue.clusterId % ClusterColors.size]
+                primaryClusters.forEach { (venue, clusterId) ->
+                    val color1 = if (clusterId != -1) {
+                        ClusterColors[clusterId % ClusterColors.size]
+                    }
+                    else{
+                        Color.Gray
                     }
 
-                    drawCircle(
-                        color = dotColor,
-                        radius = if (isDifferent) 25f / scale else 15f / scale,
-                        center = res.venue.position,
-                        alpha = 0.9f
-                    )
+                    if (isComparisonMode) {
+                        val clusterId2 = secondaryClusters.find { it.first.id == venue.id }?.second ?: -1
+                        val color2 = if (clusterId2 != -1){
+                            ClusterColors[clusterId2 % ClusterColors.size]
+                        }
+                        else{
+                            Color.Gray
+                        }
+
+                        drawCircle(
+                            color = color2,
+                            radius = 22f / scale,
+                            center = venue.position,
+                            style = Stroke(width = 6f / scale)
+                        )
+                        drawCircle(
+                            color = color1,
+                            radius = 12f / scale,
+                            center = venue.position
+                        )
+                    }
+                    else {
+                        drawCircle(
+                            color = color1,
+                            radius = 15f / scale,
+                            center = venue.position
+                        )
+                    }
                 }
             }
         }
