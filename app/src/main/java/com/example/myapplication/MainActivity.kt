@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -27,6 +28,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -279,6 +281,8 @@ fun NavigatorScreen()
     var fromText by remember {mutableStateOf("0,0")}
     var toText by remember {mutableStateOf("50,50")}
 
+    var activeInput by remember { mutableStateOf(0) }
+
     var currentPath by remember {mutableStateOf <List<Node>>(emptyList())}
 
     val grid = remember { Array(100) { IntArray(100) { 1 } } }
@@ -286,21 +290,39 @@ fun NavigatorScreen()
 
     Column(modifier = Modifier.fillMaxSize())
     {
-        MapSection(path = currentPath,modifier = Modifier.weight(1f))
+        MapSection(
+            path = currentPath,
+            modifier = Modifier.weight(1f),
+            onMapClick = { node ->
+                val coordinates = "${node.x},${node.y}"
+                if (activeInput == 0)
+                {
+                    fromText = coordinates
+                    activeInput = 1
+                }
+                else
+                {
+                    toText = coordinates
+                }
+            }
+        )
         InputSection(
             fromText = fromText,
             onFromChange = {fromText = it},
             toText =toText,
             onToChange = {toText = it},
+            activeInput = activeInput,
+            onActiveFieldChange = {activeInput = it},
             onBuildClick = {
-                scope.launch(Dispatchers.Default) {
+                scope.launch(Dispatchers.Default)
+                {
                     val startNode = parseNode(fromText)
                     val endNode = parseNode(toText)
 
                     algorithm.findPath(
                         start = startNode,
                         end = endNode,
-                        speedMs = 30L
+                        speedMs = 10L
                     ) { state ->
                         currentPath = state.currentPath
                     }
@@ -311,7 +333,7 @@ fun NavigatorScreen()
 }
 
 @Composable
-fun MapSection(path: List<Node>,modifier: Modifier = Modifier)
+fun MapSection(path: List<Node>,modifier: Modifier = Modifier,onMapClick: (Node) -> Unit)
 {
     val mapShape = RoundedCornerShape(24.dp)
     Card(
@@ -335,6 +357,21 @@ fun MapSection(path: List<Node>,modifier: Modifier = Modifier)
                         offset += pan * scale
                     }
                 }
+                .pointerInput(Unit)
+                {
+                    detectTapGestures(
+                        onTap = { tapOffset ->
+                            val alignmentX = (tapOffset.x - offset.x) / scale
+                            val alignmentY = (tapOffset.y - offset.y) / scale
+
+                            val gridX = (alignmentX / size.width * 100).toInt().coerceIn(0,99)
+                            val gridY = (alignmentY / size.width * 100).toInt().coerceIn(0,99)
+
+                            onMapClick(Node(gridX, gridY))
+                        }
+                    )
+                }
+
         ) {
             Box(
                 modifier = Modifier
@@ -379,3 +416,55 @@ fun MapSection(path: List<Node>,modifier: Modifier = Modifier)
         }
     }
 }
+
+@Composable
+fun InputSection(
+    fromText:String, onFromChange: (String) -> Unit,
+    toText: String, onToChange: (String) -> Unit,
+    activeInput: Int, onActiveFieldChange: (Int) -> Unit, onBuildClick: () -> Unit)
+{
+    Card(elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+    {
+        Column(modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp))
+        {
+            Text("Построить маршрут", style = MaterialTheme.typography.titleMedium)
+
+            OutlinedTextField(
+                value = fromText,
+                onValueChange = onFromChange,
+                label = { Text("Откуда (кликните на карту)") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { if (it.isFocused) onActiveFieldChange(0) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = if (activeInput == 0) TGU_Blue else TGU_Gold,
+                    unfocusedBorderColor = if (activeInput == 0) TGU_Blue else Color.Gray,
+                    cursorColor = TGU_Blue))
+
+            OutlinedTextField(
+                value = toText,
+                onValueChange = onToChange,
+                label = { Text("Куда (кликните на карту)") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { if (it.isFocused) onActiveFieldChange(1) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = if (activeInput == 1) TGU_Blue else TGU_Gold,
+                    unfocusedBorderColor = if (activeInput == 1) TGU_Blue else Color.Gray,
+                    cursorColor = TGU_Blue))
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = onBuildClick,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = TGU_Blue))
+            {
+                Text("ПОСТРОИТЬ ПУТЬ", color = Color.White)
+            }
+        }
+    }
+}
+
