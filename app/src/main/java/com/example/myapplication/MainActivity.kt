@@ -1,5 +1,9 @@
 package com.example.myapplication
 
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import android.os.Bundle
 import android.view.animation.OvershootInterpolator
 import androidx.activity.ComponentActivity
@@ -128,13 +132,14 @@ fun MainScreenWithNavigation() {
                 AnimatedContent(
                     targetState = selectedTab,
                     label = "tab_transition"
-                )
-                { targetTab ->
+                ) { targetTab ->
                     when (targetTab) {
                         AlgorithmTab.Navigation -> {
                             NavigatorScreen()
                         }
-
+                        AlgorithmTab.Genetic -> {
+                            GeneticScreen()
+                        }
                         else -> {
                             AlgorithmCard(targetTab)
                         }
@@ -224,7 +229,7 @@ fun parseNode(input: String): Node {
         val parts = input.split(",")
         Node(parts[0].trim().toInt(), parts[1].trim().toInt())
     } catch (e: Exception) {
-        Node(0, 0) // Значение по умолчанию при ошибке
+        Node(0, 0)
     }
 }
 
@@ -309,7 +314,122 @@ fun NavigatorScreen()
         )
     }
 }
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun GeneticScreen() {
+    val scope = rememberCoroutineScope()
+    val allPossibleItems = listOf("Блины", "Кофе", "Посуда", "Суп", "Сэндвич", "Пицца", "Приборы")
 
+    val selectedItems = remember { mutableStateListOf<String>() }
+
+    var bestPathNodes by remember { mutableStateOf<List<Node>>(emptyList()) }
+    var routeDescription by remember { mutableStateOf("") }
+
+    var isCalculating by remember { mutableStateOf(false) }
+
+    val grid = remember { Array(100) { IntArray(100) { 1 } } }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(4.dp)
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = "Выберите состав заказа:",
+                    fontWeight = FontWeight.Bold,
+                    color = TGU_Blue,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    allPossibleItems.forEach { item ->
+                        FilterChip(
+                            selected = selectedItems.contains(item),
+                            onClick = {
+                                if (selectedItems.contains(item)) selectedItems.remove(item)
+                                else selectedItems.add(item)
+                            },
+                            label = { Text(item, fontSize = 12.sp) },
+                            leadingIcon = if (selectedItems.contains(item)) {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            } else null,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = TGU_Gold.copy(alpha = 0.3f),
+                                selectedLabelColor = TGU_Blue,
+                                selectedLeadingIconColor = TGU_Blue
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = {
+                        isCalculating = true
+                        scope.launch(Dispatchers.Default) {
+                            val ga = FoodGeneticAlgorithm(
+                                requiredItems = selectedItems.map { FoodItem(it) }.toSet(),
+                                startNode = Node(0, 0),
+                                currentHour = 14,
+                                grid = grid
+                            )
+
+                            val finalNodes = ga.solve { currentNodes ->
+                                bestPathNodes = currentNodes
+                            }
+
+                            bestPathNodes = finalNodes
+                            isCalculating = false
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(45.dp),
+                    enabled = selectedItems.isNotEmpty() && !isCalculating,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = TGU_Blue)
+                ) {
+                    if (isCalculating) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Эволюция пути...")
+                    } else {
+                        Text("ПОСТРОИТЬ МАРШРУТ")
+                    }
+                }
+            }
+        }
+
+        Box(modifier = Modifier.weight(1f)) {
+            MapSection(
+                path = bestPathNodes,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            if (bestPathNodes.isNotEmpty() && !isCalculating) {
+                Text(
+                    text = "Оптимальный путь построен с учётом препятствий",
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
+                        .background(Color.White.copy(alpha = 0.9f), RoundedCornerShape(8.dp))
+                        .padding(8.dp),
+                    fontSize = 11.sp,
+                    color = TGU_Blue,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
 @Composable
 fun MapSection(path: List<Node>,modifier: Modifier = Modifier)
 {
