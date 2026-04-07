@@ -24,7 +24,6 @@ data class Node(val x: Int, val y: Int, var currentCost: Double = 0.0,
 
 data class searchState( val openSet: List<Node>, val closedSet: List<Node>,
                         val currentPath: List<Node>, val finished: Boolean, val fullPath: List<Node>?)
-
 class AStarAlgorithm(private val grid: Array<IntArray>, private val rows: Int=100,
                      private val cols: Int=100)
 {
