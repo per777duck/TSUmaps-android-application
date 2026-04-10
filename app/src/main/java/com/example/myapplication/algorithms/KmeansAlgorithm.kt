@@ -21,7 +21,7 @@ class KmeansAlgorithm(
         }
     }
 
-    fun run(points: List<Point>, metric: IDistanceMetrics): List<Cluster>{
+    suspend fun run(points: List<Point>, metric: IDistanceMetrics): List<Cluster>{
         var centroids = points.shuffled().take(k).map { Point(it.id, it.x, it.y) }
         val clusters = List(k) { ind -> Cluster(ind, centroids[ind]) }
 

@@ -50,7 +50,7 @@ class MapMatrixLoader(private val context: Context)
                     val blue = Color.blue(pixel)
 
                     val brightness = (red + green + blue) / 3
-                    matrix[x][y] = if (brightness > 128) 1 else 0
+                    matrix[y][x] = if (brightness > 128) 1 else 0
                 }
             }
         }
