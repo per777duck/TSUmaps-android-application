@@ -2,7 +2,6 @@ package com.example.myapplication.ui
 
 import android.view.animation.Interpolator
 import android.view.animation.OvershootInterpolator
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
@@ -16,7 +15,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -145,28 +146,35 @@ fun MainScreenWithNavigation() {
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             CenterAlignedTopAppBar(
-                title = { Text("Навигатор ТГУ", fontWeight = FontWeight.Bold, color = TGU_Blue) },
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.tgu_logo),
+                            contentDescription = "TGU logo",
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Text("Навигатор ТГУ", fontWeight = FontWeight.Bold, color = TGU_Blue)
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
             )
 
             Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                AnimatedContent(
-                    targetState = selectedTab,
-                    label = "tab_transition"
-                ) { targetTab ->
-                    when (targetTab) {
-                        AlgorithmTab.Navigation -> NavigatorScreen()
-                        AlgorithmTab.Clustering -> {
-                            AlgorithmCard(
-                                tab = selectedTab,
-                                venueType = selectedType,
-                                metricType = selectedMetric,
-                                isComparisonMode = isComparisonMode,
-                                mapData = mapData
-                            )
-                        }
-                        else -> AlgorithmCard(targetTab, mapData = mapData)
+                when (selectedTab) {
+                    AlgorithmTab.Navigation -> NavigatorScreen(mapData)
+                    AlgorithmTab.Clustering -> {
+                        AlgorithmCard(
+                            tab = selectedTab,
+                            venueType = selectedType,
+                            metricType = selectedMetric,
+                            isComparisonMode = isComparisonMode,
+                            mapData = mapData
+                        )
                     }
+                    else -> AlgorithmCard(selectedTab, mapData = mapData)
                 }
             }
         }

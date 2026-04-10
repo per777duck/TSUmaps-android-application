@@ -1,9 +1,9 @@
 package com.example.myapplication
 
-import kotlinx.coroutines.delay
-import kotlin.math.max
-import kotlin.math.abs
 import com.example.myapplication.data.map.MapData
+import kotlinx.coroutines.delay
+import kotlin.math.abs
+import kotlin.math.max
 
 data class Node(
     val x: Int,
@@ -33,6 +33,7 @@ class AStarAlgorithm(private val mapData: MapData) {
 
     private val diagonalCost = 1.4
     private val straightCost = 1.0
+    private val heuristicWeight = 0.25
 
     private fun heuristic(a: Node, b: Node): Double {
         return max(abs(a.x - b.x), abs(a.y - b.y)).toDouble()
@@ -74,64 +75,122 @@ class AStarAlgorithm(private val mapData: MapData) {
     suspend fun findPath(
         start: Node,
         end: Node,
-        speedMs: Long = 0L,
+        speedMs: Long = 2L,
+        maxDurationMs: Long = 10_000L,
+        callbackStride: Int = 10,
+        visualizationLimit: Int = 3500,
         callback: (searchState) -> Unit
     ): List<Node>? {
+        if (!mapData.isAvailable(start.x, start.y) || !mapData.isAvailable(end.x, end.y)) {
+            callback(searchState(emptyList(), emptyList(), emptyList(), true, null))
+            return null
+        }
 
         val openSet = mutableListOf<Node>()
         val closedSet = mutableSetOf<Node>()
+        val closedTrace = mutableListOf<Node>()
+        val bestG = mutableMapOf<Pair<Int, Int>, Double>()
+        val nodesByCoord = mutableMapOf<Pair<Int, Int>, Node>()
+        val startTimeNanos = System.nanoTime()
 
-        start.heuristicEstimation = heuristic(start, end)
+        start.currentCost = 0.0
+        start.heuristicEstimation = heuristic(start, end) * heuristicWeight
+        start.parent = null
         openSet.add(start)
+        bestG[start.x to start.y] = 0.0
+        nodesByCoord[start.x to start.y] = start
 
+        var iteration = 0
         while (openSet.isNotEmpty()) {
-
-            val current = openSet.minByOrNull { it.commonEstimation } ?: break
+            val current = openSet.minWithOrNull(
+                compareBy<Node> { it.commonEstimation }.thenBy { it.currentCost }
+            ) ?: break
 
             if (current.x == end.x && current.y == end.y) {
                 val path = reconstructPath(current)
-                callback(searchState(openSet, closedSet.toList(), path, true, path))
+                callback(
+                    searchState(
+                        openSet.takeLast(visualizationLimit),
+                        closedTrace.takeLast(visualizationLimit),
+                        path,
+                        true,
+                        path
+                    )
+                )
                 return path
             }
 
             openSet.remove(current)
             closedSet.add(current)
+            closedTrace.add(current)
 
-            val currentPath = reconstructPath(current)
-
-            callback(
-                searchState(
-                    openSet.toList(),
-                    closedSet.toList(),
-                    currentPath,
-                    false,
-                    null
+            iteration += 1
+            if (iteration % callbackStride == 0) {
+                callback(
+                    searchState(
+                        openSet.takeLast(visualizationLimit),
+                        closedTrace.takeLast(visualizationLimit),
+                        emptyList(),
+                        false,
+                        null
+                    )
                 )
-            )
-
+            }
             for ((neighbor, moveCost) in getNeighbors(current)) {
-
                 if (neighbor in closedSet) continue
 
                 val tentativeG = current.currentCost + moveCost
+                val key = neighbor.x to neighbor.y
+                val knownG = bestG[key]
 
-                val existingNode = openSet.find { it == neighbor }
+                if (knownG != null && tentativeG >= knownG) continue
 
+                bestG[key] = tentativeG
+
+                val existingNode = nodesByCoord[key]
                 if (existingNode == null) {
                     neighbor.currentCost = tentativeG
-                    neighbor.heuristicEstimation = heuristic(neighbor, end)
+                    neighbor.heuristicEstimation = heuristic(neighbor, end) * heuristicWeight
                     neighbor.parent = current
                     openSet.add(neighbor)
-                } else if (tentativeG < existingNode.currentCost) {
+                    nodesByCoord[key] = neighbor
+                } else {
                     existingNode.currentCost = tentativeG
                     existingNode.parent = current
+                    if (existingNode !in openSet) {
+                        openSet.add(existingNode)
+                    }
                 }
             }
 
-            delay(speedMs)
+            val elapsedMs = (System.nanoTime() - startTimeNanos) / 1_000_000
+            if (elapsedMs >= maxDurationMs) {
+                callback(
+                    searchState(
+                        openSet.takeLast(visualizationLimit),
+                        closedTrace.takeLast(visualizationLimit),
+                        emptyList(),
+                        true,
+                        null
+                    )
+                )
+                return null
+            }
+
+            if (speedMs > 0L && iteration % callbackStride == 0) {
+                delay(speedMs)
+            }
         }
 
-        callback(searchState(openSet, closedSet.toList(), emptyList(), true, null))
+        callback(
+            searchState(
+                openSet.takeLast(visualizationLimit),
+                closedTrace.takeLast(visualizationLimit),
+                emptyList(),
+                true,
+                null
+            )
+        )
         return null
     }
 

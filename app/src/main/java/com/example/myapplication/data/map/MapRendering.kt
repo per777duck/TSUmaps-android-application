@@ -45,8 +45,19 @@ object MapRendering {
             var offset by remember { mutableStateOf(Offset.Zero) }
 
             val state = rememberTransformableState { zoomChange, offsetChange, _ ->
-                userScale = (userScale * zoomChange).coerceIn(1f, 5f)
-                offset += offsetChange
+                val newScale = (userScale * zoomChange).coerceIn(1f, 5f)
+                val tentativeOffset = offset + offsetChange
+
+                val scaledWidth = 784f * baseScale * newScale
+                val scaledHeight = 757f * baseScale * newScale
+                val maxX = ((scaledWidth - maxWidth.value).coerceAtLeast(0f)) / 2f
+                val maxY = ((scaledHeight - maxHeight.value).coerceAtLeast(0f)) / 2f
+
+                userScale = newScale
+                offset = Offset(
+                    x = tentativeOffset.x.coerceIn(-maxX, maxX),
+                    y = tentativeOffset.y.coerceIn(-maxY, maxY)
+                )
             }
 
             Box(

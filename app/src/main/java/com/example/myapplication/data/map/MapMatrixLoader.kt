@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import kotlin.math.ceil
+import kotlin.math.min
 import androidx.core.graphics.get
 
 class MapData(val matrix: Array<IntArray>, val width: Int, val length: Int)
@@ -39,19 +40,29 @@ class MapMatrixLoader(private val context: Context)
         {
             for (x in 0 until matrixWidth)
             {
-                val centerX = x * cellSize + cellSize / 2
-                val centerY = y * cellSize + cellSize / 2
+                val startX = x * cellSize
+                val startY = y * cellSize
+                val endX = min(startX + cellSize, picture.width)
+                val endY = min(startY + cellSize, picture.height)
 
-                if (centerX < picture.width && centerY < picture.height){
-                    val pixel = picture[centerX, centerY]
+                var isWalkable = false
 
-                    val red = Color.red(pixel)
-                    val green = Color.green(pixel)
-                    val blue = Color.blue(pixel)
+                loop@ for (py in startY until endY) {
+                    for (px in startX until endX) {
+                        val pixel = picture[px, py]
+                        val red = Color.red(pixel)
+                        val green = Color.green(pixel)
+                        val blue = Color.blue(pixel)
 
-                    val brightness = (red + green + blue) / 3
-                    matrix[y][x] = if (brightness > 128) 1 else 0
+                        val brightness = (red + green + blue) / 3
+                        if (brightness > 180) {
+                            isWalkable = true
+                            break@loop
+                        }
+                    }
                 }
+
+                matrix[y][x] = if (isWalkable) 1 else 0
             }
         }
 
