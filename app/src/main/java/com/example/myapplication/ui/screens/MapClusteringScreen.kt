@@ -44,7 +44,10 @@ fun MapClusteringScreen(
         secondaryClusters = secondary
     }
 
-    TguMapWrapper { _, _, _ ->
+    TguMapWrapper(
+        mapData = mapData,
+        modifier = Modifier.fillMaxSize()
+    ) { currentScale, _, _ ->
         Canvas(modifier = Modifier.fillMaxSize()) {
             primaryClusters.forEach { (venue, clusterId) ->
                 val color1 = if (clusterId != -1) {
@@ -63,19 +66,19 @@ fun MapClusteringScreen(
 
                     drawCircle(
                         color = color2,
-                        radius = 22f,
+                        radius = 22f / currentScale.coerceAtLeast(1f),
                         center = venue.position,
-                        style = Stroke(width = 6f)
+                        style = Stroke(width = 6f / currentScale.coerceAtLeast(1f))
                     )
                     drawCircle(
                         color = color1,
-                        radius = 12f,
+                        radius = 12f / currentScale.coerceAtLeast(1f),
                         center = venue.position
                     )
                 } else {
                     drawCircle(
                         color = color1,
-                        radius = 15f,
+                        radius = 15f / currentScale.coerceAtLeast(1f),
                         center = venue.position
                     )
                 }

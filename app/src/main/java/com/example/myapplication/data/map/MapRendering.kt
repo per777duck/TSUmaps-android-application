@@ -23,35 +23,65 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.R
+import kotlin.math.min
 
 object MapRendering {
+    const val MIN_ZOOM = 1f
+    const val MAX_ZOOM = 5f
+    private const val PAN_OVERSCROLL_RATIO = 2.0f
+
+    data class MapTransform(
+        val scale: Float,
+        val offsetX: Float,
+        val offsetY: Float,
+        val mapWidth: Float,
+        val mapHeight: Float
+    )
+
     @SuppressLint("UnusedBoxWithConstraintsScope")
     @Composable
-    fun TguMapWrapper(
+    fun MapSurface(
+        mapData: MapData,
         modifier: Modifier = Modifier,
-        content: @Composable (Float, Float, Float) -> Unit
+        minZoom: Float = MIN_ZOOM,
+        maxZoom: Float = MAX_ZOOM,
+        mapDrawableId: Int = R.drawable.map_original,
+        content: @Composable (MapTransform) -> Unit = {}
     ) {
+        val logicalMapWidth = mapData.width.toFloat().coerceAtLeast(1f)
+        val logicalMapHeight = mapData.length.toFloat().coerceAtLeast(1f)
+
         BoxWithConstraints(
             modifier = modifier
                 .fillMaxSize()
                 .clipToBounds()
                 .background(Color(0xFFF0F0F0))
         ) {
-            val baseScale = maxWidth.value / 784f
+            val viewportWidth = maxWidth.value
+            val viewportHeight = maxHeight.value
+            val baseScale = min(
+                viewportWidth / logicalMapWidth,
+                viewportHeight / logicalMapHeight
+            )
 
             var userScale by remember { mutableStateOf(1f) }
             var offset by remember { mutableStateOf(Offset.Zero) }
 
             val state = rememberTransformableState { zoomChange, offsetChange, _ ->
-                val newScale = (userScale * zoomChange).coerceIn(1f, 5f)
+                val newScale = (userScale * zoomChange).coerceIn(minZoom, maxZoom)
                 val tentativeOffset = offset + offsetChange
 
-                val scaledWidth = 784f * baseScale * newScale
-                val scaledHeight = 757f * baseScale * newScale
-                val maxX = ((scaledWidth - maxWidth.value).coerceAtLeast(0f)) / 2f
-                val maxY = ((scaledHeight - maxHeight.value).coerceAtLeast(0f)) / 2f
+                val scaledWidth = logicalMapWidth * baseScale * newScale
+                val scaledHeight = logicalMapHeight * baseScale * newScale
+                val baseMaxX = ((scaledWidth - viewportWidth).coerceAtLeast(0f)) / 2f
+                val baseMaxY = ((scaledHeight - viewportHeight).coerceAtLeast(0f)) / 2f
+                val extraX = if (newScale > 1f) viewportWidth * PAN_OVERSCROLL_RATIO else 0f
+                val extraY = if (newScale > 1f) viewportHeight * PAN_OVERSCROLL_RATIO else 0f
+                val maxX = baseMaxX + extraX
+                val maxY = baseMaxY + extraY
 
                 userScale = newScale
                 offset = Offset(
@@ -70,7 +100,7 @@ object MapRendering {
 
                 Box(
                     modifier = Modifier
-                        .requiredSize(784.dp, 757.dp)
+                        .requiredSize(logicalMapWidth.toDp(), logicalMapHeight.toDp())
                         .graphicsLayer(
                             scaleX = finalScale,
                             scaleY = finalScale,
@@ -80,15 +110,43 @@ object MapRendering {
                         )
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.map_original),
+                        painter = painterResource(id = mapDrawableId),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Fit
                     )
 
-                    content(finalScale, offset.x, offset.y)
+                    content(
+                        MapTransform(
+                            scale = finalScale,
+                            offsetX = offset.x,
+                            offsetY = offset.y,
+                            mapWidth = logicalMapWidth,
+                            mapHeight = logicalMapHeight
+                        )
+                    )
                 }
             }
         }
     }
+
+    /**
+     * Backward-compatible wrapper with the old signature.
+     * Uses dimensions derived from map_mask matrix so overlays stay in sync with algorithms.
+     */
+    @Composable
+    fun TguMapWrapper(
+        mapData: MapData,
+        modifier: Modifier = Modifier,
+        content: @Composable (Float, Float, Float) -> Unit
+    ) {
+        MapSurface(
+            mapData = mapData,
+            modifier = modifier
+        ) { transform ->
+            content(transform.scale, transform.offsetX, transform.offsetY)
+        }
+    }
 }
+
+private fun Float.toDp(): Dp = this.dp

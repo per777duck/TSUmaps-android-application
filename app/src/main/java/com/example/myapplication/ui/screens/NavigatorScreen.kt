@@ -9,7 +9,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,6 +41,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.AStarAlgorithm
 import com.example.myapplication.Node
+import com.example.myapplication.data.map.MapCoordinateTransformer
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.map.MapRendering
 import com.example.myapplication.ui.TGU_Blue
@@ -56,7 +56,6 @@ fun NavigatorScreen(mapData: MapData) {
     val scope = rememberCoroutineScope()
     var startNode by remember { mutableStateOf<Node?>(null) }
     var endNode by remember { mutableStateOf<Node?>(null) }
-    var pickStartNext by remember { mutableStateOf(true) }
     var statusText by remember { mutableStateOf("Выберите начальную точку") }
     var searchJob by remember { mutableStateOf<Job?>(null) }
     var isSearching by remember { mutableStateOf(false) }
@@ -80,13 +79,12 @@ fun NavigatorScreen(mapData: MapData) {
             onMapClick = { node ->
                 if (isSearching) return@MapSection
                 val nearest = findNearestWalkable(mapData, node.x, node.y) ?: return@MapSection
-                if (pickStartNext) {
+                if (startNode == null || (startNode != null && endNode != null)) {
                     startNode = nearest
-                    pickStartNext = false
+                    endNode = null
                     statusText = "Начальная точка выбрана, выберите конечную"
                 } else {
                     endNode = nearest
-                    pickStartNext = true
                     statusText = "Можно запускать поиск маршрута"
                 }
             }
@@ -100,7 +98,6 @@ fun NavigatorScreen(mapData: MapData) {
             onResetClick = {
                 searchJob?.cancel()
                 isSearching = false
-                pickStartNext = true
                 startNode = null
                 endNode = null
                 currentPath = emptyList()
@@ -207,72 +204,76 @@ fun MapSection(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        var containerSize by remember { mutableStateOf(IntSize.Zero) }
-        MapRendering.TguMapWrapper(modifier = Modifier.fillMaxSize()) { currentScale, _, _ ->
-            Box(
+        var contentSize by remember { mutableStateOf(IntSize.Zero) }
+
+        MapRendering.TguMapWrapper(
+            mapData = mapData,
+            modifier = Modifier.fillMaxSize()
+        ) { currentScale, _, _ ->
+            Canvas(
                 modifier = Modifier
                     .fillMaxSize()
-                    .onSizeChanged { containerSize = it }
-                    .pointerInput(Unit) {
+                    .onSizeChanged { contentSize = it }
+                    .pointerInput(mapData, contentSize) {
                         detectTapGestures { tapOffset ->
-                            if (containerSize.width == 0 || containerSize.height == 0) return@detectTapGestures
-                            val gridX = (tapOffset.x / containerSize.width * mapData.width).toInt()
-                                .coerceIn(0, mapData.width - 1)
-                            val gridY = (tapOffset.y / containerSize.height * mapData.length).toInt()
-                                .coerceIn(0, mapData.length - 1)
-                            onMapClick(Node(gridX, gridY))
+                            if (contentSize.width == 0 || contentSize.height == 0) return@detectTapGestures
+                            val node = MapCoordinateTransformer.tapToGrid(
+                                tapOffset = tapOffset,
+                                canvasWidth = contentSize.width.toFloat(),
+                                canvasHeight = contentSize.height.toFloat(),
+                                mapData = mapData
+                            )
+                            onMapClick(node)
                         }
                     }
             ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val scaleX = size.width / mapData.width
-                    val scaleY = size.height / mapData.length
+                val scaleX = size.width / mapData.width.toFloat()
+                val scaleY = size.height / mapData.length.toFloat()
 
-                    closedSet.takeLast(4000).forEach { node ->
-                        drawCircle(
-                            color = Color(0xFFFFA726).copy(alpha = 0.38f),
-                            radius = (2.2f / currentScale).coerceAtLeast(0.9f),
-                            center = Offset(node.x * scaleX, node.y * scaleY)
-                        )
-                    }
+                closedSet.takeLast(4000).forEach { node ->
+                    drawCircle(
+                        color = Color(0xFFFFA726).copy(alpha = 0.38f),
+                        radius = (2.2f / currentScale).coerceAtLeast(0.9f),
+                        center = Offset(node.x * scaleX, node.y * scaleY)
+                    )
+                }
 
-                    openSet.takeLast(2000).forEach { node ->
-                        drawCircle(
-                            color = Color(0xFF00E5FF).copy(alpha = openPulse),
-                            radius = (2.8f / currentScale).coerceAtLeast(1.1f),
-                            center = Offset(node.x * scaleX, node.y * scaleY)
-                        )
-                    }
+                openSet.takeLast(2000).forEach { node ->
+                    drawCircle(
+                        color = Color(0xFF00E5FF).copy(alpha = openPulse),
+                        radius = (2.8f / currentScale).coerceAtLeast(1.1f),
+                        center = Offset(node.x * scaleX, node.y * scaleY)
+                    )
+                }
 
-                    if (path.isNotEmpty()) {
-                        val androidPath = androidx.compose.ui.graphics.Path().apply {
-                            moveTo(path[0].x * scaleX, path[0].y * scaleY)
-                            path.forEach { node ->
-                                lineTo(node.x * scaleX, node.y * scaleY)
-                            }
+                if (path.isNotEmpty()) {
+                    val androidPath = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(path[0].x * scaleX, path[0].y * scaleY)
+                        path.forEach { node ->
+                            lineTo(node.x * scaleX, node.y * scaleY)
                         }
-                        drawPath(
-                            path = androidPath,
-                            color = Color.Red,
-                            style = Stroke(width = 5f / currentScale)
-                        )
                     }
+                    drawPath(
+                        path = androidPath,
+                        color = Color.Red,
+                        style = Stroke(width = 5f / currentScale)
+                    )
+                }
 
-                    start?.let { node ->
-                        drawCircle(
-                            color = Color(0xFFFF1744),
-                            radius = (9.5f / currentScale).coerceAtLeast(3.8f),
-                            center = Offset(node.x * scaleX, node.y * scaleY)
-                        )
-                    }
+                start?.let { node ->
+                    drawCircle(
+                        color = Color(0xFFFF1744),
+                        radius = (9.5f / currentScale).coerceAtLeast(3.8f),
+                        center = Offset(node.x * scaleX, node.y * scaleY)
+                    )
+                }
 
-                    end?.let { node ->
-                        drawCircle(
-                            color = Color(0xFF2979FF),
-                            radius = (9.5f / currentScale).coerceAtLeast(3.8f),
-                            center = Offset(node.x * scaleX, node.y * scaleY)
-                        )
-                    }
+                end?.let { node ->
+                    drawCircle(
+                        color = Color(0xFF2979FF),
+                        radius = (9.5f / currentScale).coerceAtLeast(3.8f),
+                        center = Offset(node.x * scaleX, node.y * scaleY)
+                    )
                 }
             }
         }
@@ -359,3 +360,4 @@ private fun findNearestWalkable(mapData: MapData, x: Int, y: Int): Node? {
     }
     return null
 }
+
