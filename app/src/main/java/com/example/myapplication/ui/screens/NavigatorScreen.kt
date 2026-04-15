@@ -46,8 +46,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.example.myapplication.AStarAlgorithm
-import com.example.myapplication.Node
+import com.example.myapplication.algorithms.AStarAlgorithm
+import com.example.myapplication.algorithms.Node
 import com.example.myapplication.data.map.MapCoordinateTransformer
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.map.MapRendering
@@ -87,7 +87,7 @@ fun NavigatorScreen(mapData: MapData) {
             onMapClick = { node ->
                 if (isSearching) return@MapSection
                 val nearest = findNearestWalkable(mapData, node.x, node.y) ?: return@MapSection
-                if (startNode == null || (startNode != null && endNode != null)) {
+                if (startNode == null || endNode != null) {
                     startNode = nearest
                     endNode = null
                     statusText = "Начальная точка выбрана, выберите конечную"

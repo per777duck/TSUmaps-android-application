@@ -1,7 +1,7 @@
 package com.example.myapplication.data.map
 
 import androidx.compose.ui.geometry.Offset
-import com.example.myapplication.Node
+import com.example.myapplication.algorithms.Node
 
 object MapCoordinateTransformer {
     fun tapToGrid(tapOffset: Offset, canvasWidth: Float, canvasHeight: Float, mapData: MapData): Node {

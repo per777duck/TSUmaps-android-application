@@ -1,7 +1,7 @@
 package com.example.myapplication.algorithms.models
 
-import com.example.myapplication.AStarAlgorithm;
-import com.example.myapplication.Node
+import com.example.myapplication.algorithms.AStarAlgorithm;
+import com.example.myapplication.algorithms.Node
 import com.example.myapplication.data.map.MapData
 
 class AStarMetric(private val mapData: MapData) : IDistanceMetrics {

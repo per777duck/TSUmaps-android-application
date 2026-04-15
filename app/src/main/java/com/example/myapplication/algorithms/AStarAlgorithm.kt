@@ -1,4 +1,4 @@
-package com.example.myapplication
+package com.example.myapplication.algorithms
 
 import com.example.myapplication.data.map.MapData
 import kotlinx.coroutines.delay
@@ -21,7 +21,7 @@ data class Node(
     override fun hashCode(): Int = 31 * x + y
 }
 
-data class searchState(
+data class SearchState(
     val openSet: List<Node>,
     val closedSet: List<Node>,
     val currentPath: List<Node>,
@@ -79,10 +79,10 @@ class AStarAlgorithm(private val mapData: MapData) {
         maxDurationMs: Long = 10_000L,
         callbackStride: Int = 10,
         visualizationLimit: Int = 3500,
-        callback: (searchState) -> Unit
+        callback: (SearchState) -> Unit
     ): List<Node>? {
         if (!mapData.isAvailable(start.x, start.y) || !mapData.isAvailable(end.x, end.y)) {
-            callback(searchState(emptyList(), emptyList(), emptyList(), true, null))
+            callback(SearchState(emptyList(), emptyList(), emptyList(), true, null))
             return null
         }
 
@@ -90,7 +90,7 @@ class AStarAlgorithm(private val mapData: MapData) {
         val closedSet = mutableSetOf<Node>()
         val closedTrace = mutableListOf<Node>()
         val bestG = mutableMapOf<Pair<Int, Int>, Double>()
-        val nodesByCoord = mutableMapOf<Pair<Int, Int>, Node>()
+        val nodesByCord = mutableMapOf<Pair<Int, Int>, Node>()
         val startTimeNanos = System.nanoTime()
 
         start.currentCost = 0.0
@@ -98,7 +98,7 @@ class AStarAlgorithm(private val mapData: MapData) {
         start.parent = null
         openSet.add(start)
         bestG[start.x to start.y] = 0.0
-        nodesByCoord[start.x to start.y] = start
+        nodesByCord[start.x to start.y] = start
 
         var iteration = 0
         while (openSet.isNotEmpty()) {
@@ -109,7 +109,7 @@ class AStarAlgorithm(private val mapData: MapData) {
             if (current.x == end.x && current.y == end.y) {
                 val path = reconstructPath(current)
                 callback(
-                    searchState(
+                    SearchState(
                         openSet.takeLast(visualizationLimit),
                         closedTrace.takeLast(visualizationLimit),
                         path,
@@ -127,7 +127,7 @@ class AStarAlgorithm(private val mapData: MapData) {
             iteration += 1
             if (iteration % callbackStride == 0) {
                 callback(
-                    searchState(
+                    SearchState(
                         openSet.takeLast(visualizationLimit),
                         closedTrace.takeLast(visualizationLimit),
                         emptyList(),
@@ -147,13 +147,13 @@ class AStarAlgorithm(private val mapData: MapData) {
 
                 bestG[key] = tentativeG
 
-                val existingNode = nodesByCoord[key]
+                val existingNode = nodesByCord[key]
                 if (existingNode == null) {
                     neighbor.currentCost = tentativeG
                     neighbor.heuristicEstimation = heuristic(neighbor, end) * heuristicWeight
                     neighbor.parent = current
                     openSet.add(neighbor)
-                    nodesByCoord[key] = neighbor
+                    nodesByCord[key] = neighbor
                 } else {
                     existingNode.currentCost = tentativeG
                     existingNode.parent = current
@@ -166,7 +166,7 @@ class AStarAlgorithm(private val mapData: MapData) {
             val elapsedMs = (System.nanoTime() - startTimeNanos) / 1_000_000
             if (elapsedMs >= maxDurationMs) {
                 callback(
-                    searchState(
+                    SearchState(
                         openSet.takeLast(visualizationLimit),
                         closedTrace.takeLast(visualizationLimit),
                         emptyList(),
@@ -183,7 +183,7 @@ class AStarAlgorithm(private val mapData: MapData) {
         }
 
         callback(
-            searchState(
+            SearchState(
                 openSet.takeLast(visualizationLimit),
                 closedTrace.takeLast(visualizationLimit),
                 emptyList(),
