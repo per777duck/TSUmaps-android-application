@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,10 +18,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -30,7 +35,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -64,10 +71,11 @@ fun NavigatorScreen(mapData: MapData) {
     var displayedPath by remember { mutableStateOf<List<Node>>(emptyList()) }
     var openNodes by remember { mutableStateOf<List<Node>>(emptyList()) }
     var closedNodes by remember { mutableStateOf<List<Node>>(emptyList()) }
+    var isControlPanelVisible by remember { mutableStateOf(false) }
 
     val algorithm = remember { AStarAlgorithm(mapData) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
         MapSection(
             mapData = mapData,
             path = displayedPath,
@@ -75,7 +83,7 @@ fun NavigatorScreen(mapData: MapData) {
             closedSet = closedNodes,
             start = startNode,
             end = endNode,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxSize(),
             onMapClick = { node ->
                 if (isSearching) return@MapSection
                 val nearest = findNearestWalkable(mapData, node.x, node.y) ?: return@MapSection
@@ -90,86 +98,102 @@ fun NavigatorScreen(mapData: MapData) {
             }
         )
 
-        InputSection(
-            startNode = startNode,
-            endNode = endNode,
-            statusText = statusText,
-            isSearching = isSearching,
-            onResetClick = {
-                searchJob?.cancel()
-                isSearching = false
-                startNode = null
-                endNode = null
-                currentPath = emptyList()
-                displayedPath = emptyList()
-                openNodes = emptyList()
-                closedNodes = emptyList()
-                statusText = "Выберите начальную точку"
-            },
-            onSwapClick = {
-                if (!isSearching && startNode != null && endNode != null) {
-                    val tmp = startNode
-                    startNode = endNode
-                    endNode = tmp
-                    displayedPath = emptyList()
+        if (isControlPanelVisible) {
+            InputSection(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                startNode = startNode,
+                endNode = endNode,
+                statusText = statusText,
+                isSearching = isSearching,
+                onResetClick = {
+                    searchJob?.cancel()
+                    isSearching = false
+                    startNode = null
+                    endNode = null
                     currentPath = emptyList()
-                    statusText = "Точки поменяны местами"
-                }
-            },
-            onBuildClick = {
-                if (isSearching) return@InputSection
-                val start = startNode ?: run {
-                    statusText = "Сначала выберите начальную точку"
-                    return@InputSection
-                }
-                val end = endNode ?: run {
-                    statusText = "Теперь выберите конечную точку"
-                    return@InputSection
-                }
+                    displayedPath = emptyList()
+                    openNodes = emptyList()
+                    closedNodes = emptyList()
+                    statusText = "Выберите начальную точку"
+                },
+                onSwapClick = {
+                    if (!isSearching && startNode != null && endNode != null) {
+                        val tmp = startNode
+                        startNode = endNode
+                        endNode = tmp
+                        displayedPath = emptyList()
+                        currentPath = emptyList()
+                        statusText = "Точки поменяны местами"
+                    }
+                },
+                onBuildClick = {
+                    if (isSearching) return@InputSection
+                    val start = startNode ?: run {
+                        statusText = "Сначала выберите начальную точку"
+                        return@InputSection
+                    }
+                    val end = endNode ?: run {
+                        statusText = "Теперь выберите конечную точку"
+                        return@InputSection
+                    }
 
-                searchJob?.cancel()
-                isSearching = true
-                statusText = "Идёт поиск маршрута..."
-                currentPath = emptyList()
-                displayedPath = emptyList()
-                openNodes = emptyList()
-                closedNodes = emptyList()
+                    searchJob?.cancel()
+                    isSearching = true
+                    statusText = "Идёт поиск маршрута..."
+                    currentPath = emptyList()
+                    displayedPath = emptyList()
+                    openNodes = emptyList()
+                    closedNodes = emptyList()
 
-                searchJob = scope.launch {
-                    withContext(Dispatchers.Default) {
-                        algorithm.findPath(
-                            start = start,
-                            end = end,
-                            speedMs = 2L,
-                            maxDurationMs = 10_000L,
-                            callbackStride = 10
-                        ) { state ->
-                            scope.launch {
-                                openNodes = state.openSet
-                                closedNodes = state.closedSet
-                                if (state.finished) {
-                                    if (state.fullPath != null) {
-                                        currentPath = state.fullPath
-                                        openNodes = emptyList()
-                                        closedNodes = emptyList()
+                    searchJob = scope.launch {
+                        withContext(Dispatchers.Default) {
+                            algorithm.findPath(
+                                start = start,
+                                end = end,
+                                speedMs = 2L,
+                                maxDurationMs = 10_000L,
+                                callbackStride = 10
+                            ) { state ->
+                                scope.launch {
+                                    openNodes = state.openSet
+                                    closedNodes = state.closedSet
+                                    if (state.finished) {
+                                        if (state.fullPath != null) {
+                                            currentPath = state.fullPath
+                                            openNodes = emptyList()
+                                            closedNodes = emptyList()
 
-                                        displayedPath = emptyList()
-                                        for (i in 1..currentPath.size) {
-                                            displayedPath = currentPath.take(i)
-                                            delay(8L)
+                                            displayedPath = emptyList()
+                                            for (i in 1..currentPath.size) {
+                                                displayedPath = currentPath.take(i)
+                                                delay(8L)
+                                            }
+                                            statusText = "Путь найден: ${currentPath.size} точек"
+                                        } else {
+                                            statusText = "Путь не найден или превышен лимит 10 сек"
                                         }
-                                        statusText = "Путь найден: ${currentPath.size} точек"
-                                    } else {
-                                        statusText = "Путь не найден или превышен лимит 10 сек"
+                                        isSearching = false
                                     }
-                                    isSearching = false
                                 }
                             }
                         }
                     }
                 }
-            }
-        )
+            )
+        }
+
+        FloatingActionButton(
+            onClick = { isControlPanelVisible = !isControlPanelVisible },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            containerColor = TGU_Blue,
+            contentColor = Color.White
+        ) {
+            Icon(Icons.Default.Tune, contentDescription = "Панель навигации")
+        }
     }
 }
 
@@ -195,86 +219,76 @@ fun MapSection(
         label = "openPulse"
     )
 
-    val mapShape = RoundedCornerShape(24.dp)
-    Card(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = mapShape,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        var contentSize by remember { mutableStateOf(IntSize.Zero) }
+    var contentSize by remember { mutableStateOf(IntSize.Zero) }
 
-        MapRendering.TguMapWrapper(
-            mapData = mapData,
-            modifier = Modifier.fillMaxSize()
-        ) { currentScale, _, _ ->
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .onSizeChanged { contentSize = it }
-                    .pointerInput(mapData, contentSize) {
-                        detectTapGestures { tapOffset ->
-                            if (contentSize.width == 0 || contentSize.height == 0) return@detectTapGestures
-                            val node = MapCoordinateTransformer.tapToGrid(
-                                tapOffset = tapOffset,
-                                canvasWidth = contentSize.width.toFloat(),
-                                canvasHeight = contentSize.height.toFloat(),
-                                mapData = mapData
-                            )
-                            onMapClick(node)
-                        }
+    MapRendering.TguMapWrapper(
+        mapData = mapData,
+        modifier = modifier.clip(MaterialTheme.shapes.extraLarge)
+    ) { currentScale, _, _ ->
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { contentSize = it }
+                .pointerInput(mapData, contentSize) {
+                    detectTapGestures { tapOffset ->
+                        if (contentSize.width == 0 || contentSize.height == 0) return@detectTapGestures
+                        val node = MapCoordinateTransformer.tapToGrid(
+                            tapOffset = tapOffset,
+                            canvasWidth = contentSize.width.toFloat(),
+                            canvasHeight = contentSize.height.toFloat(),
+                            mapData = mapData
+                        )
+                        onMapClick(node)
                     }
-            ) {
-                val scaleX = size.width / mapData.width.toFloat()
-                val scaleY = size.height / mapData.length.toFloat()
-
-                closedSet.takeLast(4000).forEach { node ->
-                    drawCircle(
-                        color = Color(0xFFFFA726).copy(alpha = 0.38f),
-                        radius = (2.2f / currentScale).coerceAtLeast(0.9f),
-                        center = Offset(node.x * scaleX, node.y * scaleY)
-                    )
                 }
+        ) {
+            val scaleX = size.width / mapData.width.toFloat()
+            val scaleY = size.height / mapData.length.toFloat()
 
-                openSet.takeLast(2000).forEach { node ->
-                    drawCircle(
-                        color = Color(0xFF00E5FF).copy(alpha = openPulse),
-                        radius = (2.8f / currentScale).coerceAtLeast(1.1f),
-                        center = Offset(node.x * scaleX, node.y * scaleY)
-                    )
-                }
+            closedSet.takeLast(4000).forEach { node ->
+                drawCircle(
+                    color = Color(0xFFFFA726).copy(alpha = 0.38f),
+                    radius = (2.2f / currentScale).coerceAtLeast(0.9f),
+                    center = Offset(node.x * scaleX, node.y * scaleY)
+                )
+            }
 
-                if (path.isNotEmpty()) {
-                    val androidPath = androidx.compose.ui.graphics.Path().apply {
-                        moveTo(path[0].x * scaleX, path[0].y * scaleY)
-                        path.forEach { node ->
-                            lineTo(node.x * scaleX, node.y * scaleY)
-                        }
+            openSet.takeLast(2000).forEach { node ->
+                drawCircle(
+                    color = Color(0xFF00E5FF).copy(alpha = openPulse),
+                    radius = (2.8f / currentScale).coerceAtLeast(1.1f),
+                    center = Offset(node.x * scaleX, node.y * scaleY)
+                )
+            }
+
+            if (path.isNotEmpty()) {
+                val androidPath = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(path[0].x * scaleX, path[0].y * scaleY)
+                    path.forEach { node ->
+                        lineTo(node.x * scaleX, node.y * scaleY)
                     }
-                    drawPath(
-                        path = androidPath,
-                        color = Color.Red,
-                        style = Stroke(width = 5f / currentScale)
-                    )
                 }
+                drawPath(
+                    path = androidPath,
+                    color = Color.Red,
+                    style = Stroke(width = 5f / currentScale)
+                )
+            }
 
-                start?.let { node ->
-                    drawCircle(
-                        color = Color(0xFFFF1744),
-                        radius = (9.5f / currentScale).coerceAtLeast(3.8f),
-                        center = Offset(node.x * scaleX, node.y * scaleY)
-                    )
-                }
+            start?.let { node ->
+                drawCircle(
+                    color = Color(0xFFFF1744),
+                    radius = (9.5f / currentScale).coerceAtLeast(3.8f),
+                    center = Offset(node.x * scaleX, node.y * scaleY)
+                )
+            }
 
-                end?.let { node ->
-                    drawCircle(
-                        color = Color(0xFF2979FF),
-                        radius = (9.5f / currentScale).coerceAtLeast(3.8f),
-                        center = Offset(node.x * scaleX, node.y * scaleY)
-                    )
-                }
+            end?.let { node ->
+                drawCircle(
+                    color = Color(0xFF2979FF),
+                    radius = (9.5f / currentScale).coerceAtLeast(3.8f),
+                    center = Offset(node.x * scaleX, node.y * scaleY)
+                )
             }
         }
     }
@@ -282,6 +296,7 @@ fun MapSection(
 
 @Composable
 fun InputSection(
+    modifier: Modifier = Modifier,
     startNode: Node?,
     endNode: Node?,
     statusText: String,
@@ -291,8 +306,10 @@ fun InputSection(
     onBuildClick: () -> Unit
 ) {
     Card(
+        modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.96f))
     ) {
         Column(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
@@ -360,4 +377,3 @@ private fun findNearestWalkable(mapData: MapData, x: Int, y: Int): Node? {
     }
     return null
 }
-

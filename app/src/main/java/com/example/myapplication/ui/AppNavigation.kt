@@ -26,7 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.SwapCalls
@@ -34,17 +33,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,8 +67,7 @@ import com.example.myapplication.data.map.MapMatrixLoader
 import com.example.myapplication.data.venues.MetricType
 import com.example.myapplication.data.venues.VenueType
 import com.example.myapplication.data.venues.listOfVenues
-import com.example.myapplication.ui.components.FilterSettingsContent
-import com.example.myapplication.ui.screens.MapClusteringScreen
+import com.example.myapplication.ui.screens.ClusteringScreen
 import com.example.myapplication.ui.screens.NavigatorScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -104,8 +99,6 @@ fun MainScreenWithNavigation() {
     var isComparisonMode by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf<VenueType?>(null) }
     var selectedMetric by remember { mutableStateOf(MetricType.EUCLIDEAN) }
-    var showSheet by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
 
     val context = LocalContext.current
     val mapData = remember {
@@ -113,17 +106,6 @@ fun MainScreenWithNavigation() {
     }
 
     Scaffold(
-        floatingActionButton = {
-            if (selectedTab == AlgorithmTab.Clustering) {
-                FloatingActionButton(
-                    onClick = { showSheet = true },
-                    containerColor = TGU_Blue,
-                    contentColor = Color.White
-                ) {
-                    Icon(Icons.Default.FilterList, contentDescription = "Фильтры")
-                }
-            }
-        },
         bottomBar = {
             NavigationBar(
                 containerColor = Color.White,
@@ -171,27 +153,14 @@ fun MainScreenWithNavigation() {
                             venueType = selectedType,
                             metricType = selectedMetric,
                             isComparisonMode = isComparisonMode,
-                            mapData = mapData
+                            mapData = mapData,
+                            onVenueTypeChange = { selectedType = it },
+                            onMetricChange = { selectedMetric = it },
+                            onComparisonModeChange = { isComparisonMode = it }
                         )
                     }
                     else -> AlgorithmCard(selectedTab, mapData = mapData)
                 }
-            }
-        }
-        if (showSheet) {
-            ModalBottomSheet(
-                onDismissRequest = { showSheet = false },
-                sheetState = sheetState,
-                containerColor = Color.White
-            ) {
-                FilterSettingsContent(
-                    selectedType = selectedType,
-                    onVenueTypeChange = { selectedType = it },
-                    selectedMetric = selectedMetric,
-                    onMetricChange = { selectedMetric = it },
-                    isComparisonMode = isComparisonMode,
-                    onComparisonModeChange = { isComparisonMode = it }
-                )
             }
         }
     }
@@ -203,7 +172,10 @@ fun AlgorithmCard(
     venueType: VenueType? = null,
     metricType: MetricType? = null,
     isComparisonMode: Boolean = false,
-    mapData: MapData
+    mapData: MapData,
+    onVenueTypeChange: (VenueType?) -> Unit = {},
+    onMetricChange: (MetricType) -> Unit = {},
+    onComparisonModeChange: (Boolean) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxSize(),
@@ -212,12 +184,15 @@ fun AlgorithmCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         if (tab == AlgorithmTab.Clustering) {
-            MapClusteringScreen(
+            ClusteringScreen(
                 venues = listOfVenues,
                 selectedType = venueType,
                 selectedMetric = metricType,
                 isComparisonMode = isComparisonMode,
-                mapData = mapData
+                mapData = mapData,
+                onVenueTypeChange = onVenueTypeChange,
+                onMetricChange = onMetricChange,
+                onComparisonModeChange = onComparisonModeChange
             )
         } else {
             Column(
