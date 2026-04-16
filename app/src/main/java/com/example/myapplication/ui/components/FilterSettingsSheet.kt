@@ -28,6 +28,25 @@ import com.example.myapplication.data.venues.MetricType
 import com.example.myapplication.data.venues.VenueType
 import com.example.myapplication.ui.TGU_Blue
 import com.example.myapplication.ui.TGU_Gold
+import com.example.myapplication.features.clustering.ClusterAlgorithmType
+
+val ClusterColors = listOf(
+    Color(0xFFEF5350),
+    Color(0xFF42A5F5),
+    Color(0xFF66BB6A),
+    Color(0xFFFFEE58),
+    Color(0xFFAB47BC),
+    Color(0xFFFFA726),
+    Color(0xFF26C6DA),
+    Color(0xFF78909C),
+    Color(0xFF8D6E63),
+    Color(0xFFEC407A),
+    Color(0xFF26A69A),
+    Color(0xFFD4E157),
+    Color(0xFF5C6BC0),
+    Color(0xFFFF7043),
+    Color(0xFF9CCC65)
+)
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +55,8 @@ fun FilterSettingsContent(
     onVenueTypeChange: (VenueType?) -> Unit,
     selectedMetric: MetricType,
     onMetricChange: (MetricType) -> Unit,
+    selectedAlgorithm: ClusterAlgorithmType = ClusterAlgorithmType.KMEANS,
+    onAlgorithmChange: (ClusterAlgorithmType) -> Unit,
     clusterCount: Int,
     onClusterCountChange: (Int) -> Unit,
     isComparisonMode: Boolean,
@@ -65,7 +86,7 @@ fun FilterSettingsContent(
                         when (type) {
                             VenueType.FOOD -> Text("Поесть")
                             VenueType.COWORKING -> Text("Рабочая зона")
-                            VenueType.SIGHTSEEING -> Text("Достопримечетельности")
+                            VenueType.SIGHTSEEING -> Text("Достопримечательности")
                         }
                     }
                 )
@@ -94,13 +115,38 @@ fun FilterSettingsContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Количество кластеров: $clusterCount", style = MaterialTheme.typography.labelLarge)
-        Slider(
-            value = clusterCount.toFloat(),
-            onValueChange = { onClusterCountChange(it.toInt().coerceIn(2, 10)) },
-            valueRange = 2f..10f,
-            steps = 7
-        )
+        Text("Алгоритм кластеризации:", style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ClusterAlgorithmType.entries.forEach { algorithm ->
+                FilterChip(
+                    selected = selectedAlgorithm == algorithm,
+                    onClick = { onAlgorithmChange(algorithm) },
+                    label = {
+                        when (algorithm) {
+                            ClusterAlgorithmType.KMEANS -> Text("K-means")
+                            ClusterAlgorithmType.DBSCAN -> Text("DBSCAN")
+                        }
+                    }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (selectedAlgorithm == ClusterAlgorithmType.KMEANS) {
+            Text("Количество кластеров: $clusterCount", style = MaterialTheme.typography.labelLarge)
+            Slider(
+                value = clusterCount.toFloat(),
+                onValueChange = { onClusterCountChange(it.toInt().coerceIn(2, 10)) },
+                valueRange = 2f..10f,
+                steps = 7
+            )
+        } else {
+            Text(
+                "DBSCAN использует фиксированные параметры плотности.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -117,21 +163,3 @@ fun FilterSettingsContent(
         }
     }
 }
-
-val ClusterColors = listOf(
-    Color(0xFFEF5350),
-    Color(0xFF42A5F5),
-    Color(0xFF66BB6A),
-    Color(0xFFFFEE58),
-    Color(0xFFAB47BC),
-    Color(0xFFFFA726),
-    Color(0xFF26C6DA),
-    Color(0xFF78909C),
-    Color(0xFF8D6E63),
-    Color(0xFFEC407A),
-    Color(0xFF26A69A),
-    Color(0xFFD4E157),
-    Color(0xFF5C6BC0),
-    Color(0xFFFF7043),
-    Color(0xFF9CCC65)
-)

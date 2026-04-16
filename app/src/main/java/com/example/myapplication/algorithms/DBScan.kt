@@ -6,7 +6,7 @@ import com.example.myapplication.algorithms.models.Point
 
 class DBScan(
     private val eps: Double,
-    private val minPoints: Int = 2
+    private val minPoints: Int = 4
 ) {
     private companion object {
         const val UNVISITED = -2
@@ -23,7 +23,7 @@ class DBScan(
             if (pointStatuses[index] != UNVISITED) continue
 
             val neighbors = findingNeighbors(index, points, metric)
-
+            
             if (neighbors.size < minPoints) {
                 pointStatuses[index] = SINGLE
                 continue
@@ -54,7 +54,6 @@ class DBScan(
             .map { listOf(points[it.index]) }
 
         val allClusters = multipleClusters + singleClusters
-
         return allClusters.mapIndexed { clusterId, clusterPoints ->
             Cluster(
                 id = clusterId,

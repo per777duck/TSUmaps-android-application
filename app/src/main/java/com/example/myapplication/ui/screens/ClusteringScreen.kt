@@ -31,6 +31,7 @@ import com.example.myapplication.features.clustering.ClusteringCoordinator
 import com.example.myapplication.ui.components.ClusterColors
 import com.example.myapplication.ui.components.FilterSettingsContent
 import com.example.myapplication.ui.TGU_Blue
+import com.example.myapplication.features.clustering.ClusterAlgorithmType
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -48,13 +49,22 @@ fun ClusteringScreen(
 ) {
     var primaryClusters by remember { mutableStateOf<List<Pair<Venue, Int>>>(emptyList()) }
     var secondaryClusters by remember { mutableStateOf<List<Pair<Venue, Int>>>(emptyList()) }
+    var selectedAlgorithm by remember { mutableStateOf(ClusterAlgorithmType.KMEANS) }
     var isControlPanelVisible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(venues, selectedMetric, selectedType, clusterCount, isComparisonMode) {
+    LaunchedEffect(
+        venues,
+        selectedMetric,
+        selectedType,
+        selectedAlgorithm,
+        clusterCount,
+        isComparisonMode
+    ) {
         val (primary, secondary) = ClusteringCoordinator.findingClusters(
             venues = venues,
             selectedType = selectedType,
             selectedMetric = selectedMetric,
+            selectedAlgorithm = selectedAlgorithm,
             clusterCount = clusterCount,
             isComparisonMode = isComparisonMode,
             mapData = mapData
@@ -120,6 +130,8 @@ fun ClusteringScreen(
                     onVenueTypeChange = onVenueTypeChange,
                     selectedMetric = selectedMetric ?: MetricType.EUCLIDEAN,
                     onMetricChange = onMetricChange,
+                    selectedAlgorithm = selectedAlgorithm,
+                    onAlgorithmChange = { selectedAlgorithm = it },
                     clusterCount = clusterCount,
                     onClusterCountChange = onClusterCountChange,
                     isComparisonMode = isComparisonMode,

@@ -1,5 +1,6 @@
 package com.example.myapplication.features.clustering
 
+import com.example.myapplication.algorithms.DBScan
 import com.example.myapplication.algorithms.KmeansAlgorithm
 import com.example.myapplication.algorithms.models.Cluster
 import com.example.myapplication.algorithms.models.AStarMetric
@@ -10,18 +11,28 @@ import com.example.myapplication.data.venues.MetricType
 import com.example.myapplication.data.venues.Venue
 import com.example.myapplication.data.venues.VenueType
 
+enum class ClusterAlgorithmType{
+    KMEANS,
+    DBSCAN
+}
+
 object ClusteringCoordinator {
+    private const val DEFAULT_EPS = 20.0
+    private const val DEFAULT_MIN_POINTS = 4
+
     suspend fun findingClusters(
         venues: List<Venue>,
         selectedType: VenueType?,
         selectedMetric: MetricType?,
+        selectedAlgorithm: ClusterAlgorithmType,
         clusterCount: Int,
         isComparisonMode: Boolean,
         mapData: MapData
     ): Pair<List<Pair<Venue, Int>>, List<Pair<Venue, Int>>> {
         val filteredVenues = if (selectedType == null) {
             venues
-        } else {
+        }
+        else {
             venues.filter { it.type == selectedType }
         }
 
@@ -37,10 +48,10 @@ object ClusteringCoordinator {
             )
         }
 
-        val metric1 = when (selectedMetric) {
+        val primaryMetricType = selectedMetric ?: MetricType.EUCLIDEAN
+        val metric1 =  when (primaryMetricType) {
             MetricType.EUCLIDEAN -> EuclideanMetric()
             MetricType.ASTAR -> AStarMetric(mapData)
-            else -> EuclideanMetric()
         }
 
         val limitedClusterCount = clusterCount
@@ -48,20 +59,37 @@ object ClusteringCoordinator {
             .coerceAtMost(points.size)
             .coerceAtLeast(1)
 
-        val primaryResult = KmeansAlgorithm(limitedClusterCount).run(points, metric1)
+        val primaryResult = when (selectedAlgorithm) {
+            ClusterAlgorithmType.KMEANS -> {
+                KmeansAlgorithm(limitedClusterCount).run(points, metric1)
+            }
+            ClusterAlgorithmType.DBSCAN -> {
+                DBScan(DEFAULT_EPS, DEFAULT_MIN_POINTS).run(points, metric1)
+            }
+        }
         val primaryClusters = mapVenuesToClusterIds(filteredVenues, primaryResult)
 
         if (!isComparisonMode) {
             return primaryClusters to emptyList()
         }
 
-        val metric2 = when (selectedMetric) {
+        val secondaryMetricType = when (primaryMetricType) {
+            MetricType.EUCLIDEAN -> MetricType.ASTAR
+            MetricType.ASTAR -> MetricType.EUCLIDEAN
+        }
+        val metric2 = when (secondaryMetricType) {
             MetricType.EUCLIDEAN -> EuclideanMetric()
             MetricType.ASTAR -> AStarMetric(mapData)
-            else -> EuclideanMetric()
         }
 
-        val secondaryResult = KmeansAlgorithm(limitedClusterCount).run(points, metric2)
+        val secondaryResult = when (selectedAlgorithm) {
+            ClusterAlgorithmType.KMEANS -> {
+                KmeansAlgorithm(limitedClusterCount).run(points, metric2)
+            }
+            ClusterAlgorithmType.DBSCAN -> {
+                DBScan(DEFAULT_EPS, DEFAULT_MIN_POINTS).run(points, metric2)
+            }
+        }
         val secondaryClusters = mapVenuesToClusterIds(filteredVenues, secondaryResult)
         return primaryClusters to secondaryClusters
     }
