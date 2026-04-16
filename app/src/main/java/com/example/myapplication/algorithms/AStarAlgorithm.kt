@@ -205,4 +205,64 @@ class AStarAlgorithm(private val mapData: MapData) {
 
         return path.reversed()
     }
+
+    fun findPathSync(start: Node, end: Node): List<Node>? {
+        if (!mapData.isAvailable(start.x, start.y) || !mapData.isAvailable(end.x, end.y)) {
+            return null
+        }
+
+        val openSet = mutableListOf<Node>()
+        val closedSet = mutableSetOf<Node>()
+        val bestG = mutableMapOf<Pair<Int, Int>, Double>()
+        val nodesByCoord = mutableMapOf<Pair<Int, Int>, Node>()
+
+        start.currentCost = 0.0
+        start.heuristicEstimation = heuristic(start, end) * heuristicWeight
+        start.parent = null
+        openSet.add(start)
+        bestG[start.x to start.y] = 0.0
+        nodesByCoord[start.x to start.y] = start
+
+        while (openSet.isNotEmpty()) {
+            val current = openSet.minWithOrNull(
+                compareBy<Node> { it.commonEstimation }.thenBy { it.currentCost }
+            ) ?: break
+
+            if (current.x == end.x && current.y == end.y) {
+                return reconstructPath(current)
+            }
+
+            openSet.remove(current)
+            closedSet.add(current)
+
+            for ((neighbor, moveCost) in getNeighbors(current)) {
+                if (neighbor in closedSet) continue
+
+                val tentativeG = current.currentCost + moveCost
+                val key = neighbor.x to neighbor.y
+                val knownG = bestG[key]
+
+                if (knownG != null && tentativeG >= knownG) continue
+
+                bestG[key] = tentativeG
+
+                val existingNode = nodesByCoord[key]
+                if (existingNode == null) {
+                    neighbor.currentCost = tentativeG
+                    neighbor.heuristicEstimation = heuristic(neighbor, end) * heuristicWeight
+                    neighbor.parent = current
+                    openSet.add(neighbor)
+                    nodesByCoord[key] = neighbor
+                } else {
+                    existingNode.currentCost = tentativeG
+                    existingNode.parent = current
+                    if (existingNode !in openSet) {
+                        openSet.add(existingNode)
+                    }
+                }
+            }
+        }
+
+        return null
+    }
 }

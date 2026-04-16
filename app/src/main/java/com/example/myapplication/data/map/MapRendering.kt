@@ -130,10 +130,6 @@ object MapRendering {
         }
     }
 
-    /**
-     * Backward-compatible wrapper with the old signature.
-     * Uses dimensions derived from map_mask matrix so overlays stay in sync with algorithms.
-     */
     @Composable
     fun TguMapWrapper(
         mapData: MapData,
