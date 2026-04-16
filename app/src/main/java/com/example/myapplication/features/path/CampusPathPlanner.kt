@@ -1,7 +1,7 @@
 package com.example.myapplication.features.path
 
-import com.example.myapplication.AStarAlgorithm
-import com.example.myapplication.Node
+import com.example.myapplication.algorithms.AStarAlgorithm
+import com.example.myapplication.algorithms.Node
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.venues.CAMPUS_HEIGHT_KM
 import com.example.myapplication.data.venues.CAMPUS_MAP_HEIGHT_PX

@@ -41,10 +41,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.myapplication.AStarAlgorithm
+import com.example.myapplication.algorithms.AStarAlgorithm
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.map.MapRendering
 import com.example.myapplication.data.venues.FoodItem
@@ -54,10 +53,10 @@ import com.example.myapplication.data.venues.dinnerPreset
 import com.example.myapplication.data.venues.foodVenues
 import com.example.myapplication.data.venues.lunchPreset
 import com.example.myapplication.data.venues.userStartMapPoint
-import com.example.myapplication.features.genetic.GeneticIterationUpdate
-import com.example.myapplication.features.genetic.GeneticMealRouteResult
-import com.example.myapplication.features.genetic.MealRouteGeneticAlgorithm
-import com.example.myapplication.features.genetic.RouteStop
+import com.example.myapplication.algorithms.GeneticIterationUpdate
+import com.example.myapplication.algorithms.GeneticMealRouteResult
+import com.example.myapplication.algorithms.MealRouteGeneticAlgorithm
+import com.example.myapplication.algorithms.RouteStop
 import com.example.myapplication.features.path.CampusPathPlanner
 import com.example.myapplication.features.path.CampusRoutingContext
 import com.example.myapplication.ui.TGU_Blue
@@ -139,6 +138,7 @@ fun GeneticMealRouteScreen(mapData: MapData) {
                 colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
                 GeneticRouteMap(
+                    mapData = mapData,
                     route = displayedRoute,
                     pathPolyline = pathPolyline,
                     routing = routing
@@ -262,13 +262,14 @@ fun GeneticMealRouteScreen(mapData: MapData) {
 
 @Composable
 private fun GeneticRouteMap(
+    mapData: MapData,
     route: List<RouteStop>,
     pathPolyline: List<Offset>,
     routing: CampusRoutingContext
 ) {
     MapRendering.TguMapWrapper(
+        mapData = mapData,
         modifier = Modifier.fillMaxSize(),
-        imageContentScale = ContentScale.FillBounds
     ) { currentScale, _, _ ->
         Canvas(modifier = Modifier.fillMaxSize()) {
             if (pathPolyline.size >= 2) {

@@ -1,4 +1,4 @@
-package com.example.myapplication.features.genetic
+package com.example.myapplication.algorithms
 
 import com.example.myapplication.data.venues.FoodItem
 import com.example.myapplication.data.venues.FoodVenue
