@@ -3,7 +3,10 @@ package com.example.myapplication.ui.screens
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
@@ -73,7 +76,7 @@ fun ClusteringScreen(
         secondaryClusters = secondary
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         TguMapWrapper(
             mapData = mapData,
             modifier = Modifier.fillMaxSize()
@@ -120,6 +123,8 @@ fun ClusteringScreen(
             Card(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .heightIn(max = maxHeight * 0.8f)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 shape = androidx.compose.material3.MaterialTheme.shapes.extraLarge,
                 colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.96f)),

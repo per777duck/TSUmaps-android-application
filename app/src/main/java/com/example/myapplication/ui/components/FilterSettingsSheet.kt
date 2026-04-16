@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Compare
 import androidx.compose.material3.Button
@@ -62,11 +64,14 @@ fun FilterSettingsContent(
     isComparisonMode: Boolean,
     onComparisonModeChange: (Boolean) -> Unit
 ) {
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
             .padding(bottom = 32.dp)
+            .verticalScroll(scrollState)
     ) {
         Text("Настройки кластеризации", style = MaterialTheme.typography.headlineSmall, color = TGU_Blue)
         Spacer(modifier = Modifier.height(16.dp))
