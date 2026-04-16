@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
@@ -66,12 +67,19 @@ fun ClusteringScreen(
             modifier = Modifier.fillMaxSize()
         ) { currentScale, _, _ ->
             Canvas(modifier = Modifier.fillMaxSize()) {
+                val scaleX = size.width / mapData.width.toFloat()
+                val scaleY = size.height / mapData.length.toFloat()
+
                 primaryClusters.forEach { (venue, clusterId) ->
                     val color1 = if (clusterId != -1) {
                         ClusterColors[clusterId % ClusterColors.size]
                     } else {
                         Color.Gray
                     }
+                    val venueCenter = Offset(
+                        x = venue.x * scaleX,
+                        y = venue.y * scaleY
+                    )
 
                     if (isComparisonMode) {
                         val clusterId2 = secondaryClusters.find { it.first.id == venue.id }?.second ?: -1
@@ -84,19 +92,19 @@ fun ClusteringScreen(
                         drawCircle(
                             color = color2,
                             radius = 22f / currentScale.coerceAtLeast(1f),
-                            center = venue.position,
+                            center = venueCenter,
                             style = Stroke(width = 6f / currentScale.coerceAtLeast(1f))
                         )
                         drawCircle(
                             color = color1,
                             radius = 12f / currentScale.coerceAtLeast(1f),
-                            center = venue.position
+                            center = venueCenter
                         )
                     } else {
                         drawCircle(
                             color = color1,
                             radius = 15f / currentScale.coerceAtLeast(1f),
-                            center = venue.position
+                            center = venueCenter
                         )
                     }
                 }
