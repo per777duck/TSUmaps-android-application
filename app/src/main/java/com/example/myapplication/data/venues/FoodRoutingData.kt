@@ -89,7 +89,7 @@ const val CAMPUS_HEIGHT_KM = 2.2
 private fun mapToGeo(position: Offset): GeoPoint {
     val xKm = (position.x / CAMPUS_MAP_WIDTH_PX) * CAMPUS_WIDTH_KM
     val yKm = (position.y / CAMPUS_MAP_HEIGHT_PX) * CAMPUS_HEIGHT_KM
-    return GeoPoint(xKm = xKm.toDouble(), yKm = yKm.toDouble())
+    return GeoPoint(xKm = xKm, yKm = yKm)
 }
 
 val userStartMapPoint = Offset(300f, 410f)
