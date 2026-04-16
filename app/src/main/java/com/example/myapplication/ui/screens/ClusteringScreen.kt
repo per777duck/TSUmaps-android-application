@@ -3,7 +3,10 @@ package com.example.myapplication.ui.screens
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
@@ -31,6 +34,9 @@ import com.example.myapplication.features.clustering.ClusteringCoordinator
 import com.example.myapplication.ui.components.ClusterColors
 import com.example.myapplication.ui.components.FilterSettingsContent
 import com.example.myapplication.ui.TGU_Blue
+import com.example.myapplication.features.clustering.ClusterAlgorithmType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -38,29 +44,43 @@ fun ClusteringScreen(
     venues: List<Venue>,
     selectedType: VenueType?,
     selectedMetric: MetricType?,
+    clusterCount: Int,
     isComparisonMode: Boolean = false,
     mapData: MapData,
     onVenueTypeChange: (VenueType?) -> Unit,
     onMetricChange: (MetricType) -> Unit,
+    onClusterCountChange: (Int) -> Unit,
     onComparisonModeChange: (Boolean) -> Unit
 ) {
     var primaryClusters by remember { mutableStateOf<List<Pair<Venue, Int>>>(emptyList()) }
     var secondaryClusters by remember { mutableStateOf<List<Pair<Venue, Int>>>(emptyList()) }
+    var selectedAlgorithm by remember { mutableStateOf(ClusterAlgorithmType.KMEANS) }
     var isControlPanelVisible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(venues, selectedMetric, selectedType, isComparisonMode) {
-        val (primary, secondary) = ClusteringCoordinator.computeClusters(
-            venues = venues,
-            selectedType = selectedType,
-            selectedMetric = selectedMetric,
-            isComparisonMode = isComparisonMode,
-            mapData = mapData
-        )
+    LaunchedEffect(
+        venues,
+        selectedMetric,
+        selectedType,
+        selectedAlgorithm,
+        clusterCount,
+        isComparisonMode
+    ) {
+        val (primary, secondary) = withContext(Dispatchers.Default) {
+            ClusteringCoordinator.findingClusters(
+                venues = venues,
+                selectedType = selectedType,
+                selectedMetric = selectedMetric,
+                selectedAlgorithm = selectedAlgorithm,
+                clusterCount = clusterCount,
+                isComparisonMode = isComparisonMode,
+                mapData = mapData
+            )
+        }
         primaryClusters = primary
         secondaryClusters = secondary
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         TguMapWrapper(
             mapData = mapData,
             modifier = Modifier.fillMaxSize()
@@ -107,6 +127,8 @@ fun ClusteringScreen(
             Card(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .heightIn(max = maxHeight * 0.8f)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 shape = androidx.compose.material3.MaterialTheme.shapes.extraLarge,
                 colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.96f)),
@@ -117,6 +139,10 @@ fun ClusteringScreen(
                     onVenueTypeChange = onVenueTypeChange,
                     selectedMetric = selectedMetric ?: MetricType.EUCLIDEAN,
                     onMetricChange = onMetricChange,
+                    selectedAlgorithm = selectedAlgorithm,
+                    onAlgorithmChange = { selectedAlgorithm = it },
+                    clusterCount = clusterCount,
+                    onClusterCountChange = onClusterCountChange,
                     isComparisonMode = isComparisonMode,
                     onComparisonModeChange = onComparisonModeChange
                 )
