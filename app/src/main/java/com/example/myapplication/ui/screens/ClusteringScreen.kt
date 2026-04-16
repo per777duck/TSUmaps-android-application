@@ -35,6 +35,8 @@ import com.example.myapplication.ui.components.ClusterColors
 import com.example.myapplication.ui.components.FilterSettingsContent
 import com.example.myapplication.ui.TGU_Blue
 import com.example.myapplication.features.clustering.ClusterAlgorithmType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -63,15 +65,17 @@ fun ClusteringScreen(
         clusterCount,
         isComparisonMode
     ) {
-        val (primary, secondary) = ClusteringCoordinator.findingClusters(
-            venues = venues,
-            selectedType = selectedType,
-            selectedMetric = selectedMetric,
-            selectedAlgorithm = selectedAlgorithm,
-            clusterCount = clusterCount,
-            isComparisonMode = isComparisonMode,
-            mapData = mapData
-        )
+        val (primary, secondary) = withContext(Dispatchers.Default) {
+            ClusteringCoordinator.findingClusters(
+                venues = venues,
+                selectedType = selectedType,
+                selectedMetric = selectedMetric,
+                selectedAlgorithm = selectedAlgorithm,
+                clusterCount = clusterCount,
+                isComparisonMode = isComparisonMode,
+                mapData = mapData
+            )
+        }
         primaryClusters = primary
         secondaryClusters = secondary
     }

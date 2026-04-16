@@ -50,7 +50,7 @@ class KmeansAlgorithm(
                 Point(-1, avX, avY)
             }
 
-            if (convergence(centroids, newCentroids)) return@repeat
+            if (convergence(centroids, newCentroids)) return clusters
             centroids = newCentroids
             clusters.forEachIndexed { index, cluster -> cluster.centroid = centroids[index] }
         }
