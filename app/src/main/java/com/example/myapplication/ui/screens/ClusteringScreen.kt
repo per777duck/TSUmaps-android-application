@@ -38,21 +38,24 @@ fun ClusteringScreen(
     venues: List<Venue>,
     selectedType: VenueType?,
     selectedMetric: MetricType?,
+    clusterCount: Int,
     isComparisonMode: Boolean = false,
     mapData: MapData,
     onVenueTypeChange: (VenueType?) -> Unit,
     onMetricChange: (MetricType) -> Unit,
+    onClusterCountChange: (Int) -> Unit,
     onComparisonModeChange: (Boolean) -> Unit
 ) {
     var primaryClusters by remember { mutableStateOf<List<Pair<Venue, Int>>>(emptyList()) }
     var secondaryClusters by remember { mutableStateOf<List<Pair<Venue, Int>>>(emptyList()) }
     var isControlPanelVisible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(venues, selectedMetric, selectedType, isComparisonMode) {
-        val (primary, secondary) = ClusteringCoordinator.computeClusters(
+    LaunchedEffect(venues, selectedMetric, selectedType, clusterCount, isComparisonMode) {
+        val (primary, secondary) = ClusteringCoordinator.findingClusters(
             venues = venues,
             selectedType = selectedType,
             selectedMetric = selectedMetric,
+            clusterCount = clusterCount,
             isComparisonMode = isComparisonMode,
             mapData = mapData
         )
@@ -117,6 +120,8 @@ fun ClusteringScreen(
                     onVenueTypeChange = onVenueTypeChange,
                     selectedMetric = selectedMetric ?: MetricType.EUCLIDEAN,
                     onMetricChange = onMetricChange,
+                    clusterCount = clusterCount,
+                    onClusterCountChange = onClusterCountChange,
                     isComparisonMode = isComparisonMode,
                     onComparisonModeChange = onComparisonModeChange
                 )

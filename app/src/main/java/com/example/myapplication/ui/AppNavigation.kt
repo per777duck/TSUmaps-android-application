@@ -99,6 +99,7 @@ fun MainScreenWithNavigation() {
     var isComparisonMode by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf<VenueType?>(null) }
     var selectedMetric by remember { mutableStateOf(MetricType.EUCLIDEAN) }
+    var clusterCount by remember { mutableStateOf(2) }
 
     val context = LocalContext.current
     val mapData = remember {
@@ -152,10 +153,12 @@ fun MainScreenWithNavigation() {
                             tab = selectedTab,
                             venueType = selectedType,
                             metricType = selectedMetric,
+                            clusterCount = clusterCount,
                             isComparisonMode = isComparisonMode,
                             mapData = mapData,
                             onVenueTypeChange = { selectedType = it },
                             onMetricChange = { selectedMetric = it },
+                            onClusterCountChange = { clusterCount = it },
                             onComparisonModeChange = { isComparisonMode = it }
                         )
                     }
@@ -171,10 +174,12 @@ fun AlgorithmCard(
     tab: AlgorithmTab,
     venueType: VenueType? = null,
     metricType: MetricType? = null,
+    clusterCount: Int = 2,
     isComparisonMode: Boolean = false,
     mapData: MapData,
     onVenueTypeChange: (VenueType?) -> Unit = {},
     onMetricChange: (MetricType) -> Unit = {},
+    onClusterCountChange: (Int) -> Unit = {},
     onComparisonModeChange: (Boolean) -> Unit = {}
 ) {
     Card(
@@ -188,10 +193,12 @@ fun AlgorithmCard(
                 venues = listOfVenues,
                 selectedType = venueType,
                 selectedMetric = metricType,
+                clusterCount = clusterCount,
                 isComparisonMode = isComparisonMode,
                 mapData = mapData,
                 onVenueTypeChange = onVenueTypeChange,
                 onMetricChange = onMetricChange,
+                onClusterCountChange = onClusterCountChange,
                 onComparisonModeChange = onComparisonModeChange
             )
         } else {

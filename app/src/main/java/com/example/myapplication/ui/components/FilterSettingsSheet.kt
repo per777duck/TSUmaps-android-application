@@ -18,6 +18,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -35,6 +36,8 @@ fun FilterSettingsContent(
     onVenueTypeChange: (VenueType?) -> Unit,
     selectedMetric: MetricType,
     onMetricChange: (MetricType) -> Unit,
+    clusterCount: Int,
+    onClusterCountChange: (Int) -> Unit,
     isComparisonMode: Boolean,
     onComparisonModeChange: (Boolean) -> Unit
 ) {
@@ -88,6 +91,18 @@ fun FilterSettingsContent(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text("Количество кластеров: $clusterCount", style = MaterialTheme.typography.labelLarge)
+        Slider(
+            value = clusterCount.toFloat(),
+            onValueChange = { onClusterCountChange(it.toInt().coerceIn(2, 10)) },
+            valueRange = 2f..10f,
+            steps = 7
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         Button(
             onClick = { onComparisonModeChange(!isComparisonMode) },
