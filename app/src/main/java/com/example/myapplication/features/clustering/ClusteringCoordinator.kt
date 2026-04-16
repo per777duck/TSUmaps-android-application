@@ -42,8 +42,8 @@ object ClusteringCoordinator {
         val points = filteredVenues.map {
             Point(
                 id = it.id,
-                x = it.position.x.toDouble(),
-                y = it.position.y.toDouble()
+                x = it.x.toDouble(),
+                y = it.y.toDouble()
             )
         }
 
