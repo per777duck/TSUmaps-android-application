@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,10 +18,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
@@ -42,14 +45,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.R
@@ -66,6 +72,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 @Composable
 fun NavigatorScreen(
@@ -360,6 +367,15 @@ fun InputSection(
     val notSelected = stringResource(R.string.nav_coord_not_selected)
     val coordA = startNode?.let { "${it.x},${it.y}" } ?: notSelected
     val coordB = endNode?.let { "${it.x},${it.y}" } ?: notSelected
+    var contentOffsetY by remember { mutableStateOf(0f) }
+    var viewportHeightPx by remember { mutableStateOf(0f) }
+    var contentHeightPx by remember { mutableStateOf(0f) }
+    val density = LocalDensity.current
+    val extraScrollLimitPx = with(density) { 40.dp.toPx() }
+    val overflowPx = (contentHeightPx - viewportHeightPx).coerceAtLeast(0f)
+    val minOffset = -(overflowPx + extraScrollLimitPx)
+    val maxOffset = extraScrollLimitPx
+
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
@@ -367,57 +383,98 @@ fun InputSection(
         colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.96f))
     ) {
         Column(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
-            Text(stringResource(R.string.nav_panel_title), style = MaterialTheme.typography.titleMedium)
-            Text(
-                statusText,
-                color = TGU_Blue,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth().height(22.dp)
-            )
-            Text(stringResource(R.string.nav_coord_format, coordA))
-            Text(stringResource(R.string.nav_coord_b_format, coordB))
-            Text(
-                stringResource(R.string.nav_legend_text),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 232.dp)
+                    .clipToBounds()
+                    .onSizeChanged {
+                        viewportHeightPx = it.height.toFloat()
+                        contentOffsetY = contentOffsetY.coerceIn(minOffset, maxOffset)
+                    }
+                    .pointerInput(minOffset, maxOffset) {
+                        detectVerticalDragGestures { change, dragAmount ->
+                            change.consume()
+                            contentOffsetY =
+                                (contentOffsetY + dragAmount).coerceIn(minOffset, maxOffset)
+                        }
+                    }
             ) {
-                LegendItem(Color(0xFFFF1744), stringResource(R.string.nav_legend_start))
-                LegendItem(Color(0xFF2979FF), stringResource(R.string.nav_legend_end))
-                LegendItem(Color.Red, stringResource(R.string.nav_legend_path))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onSizeChanged {
+                            contentHeightPx = it.height.toFloat()
+                            contentOffsetY = contentOffsetY.coerceIn(minOffset, maxOffset)
+                        }
+                        .offset { IntOffset(0, contentOffsetY.roundToInt()) },
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        stringResource(R.string.nav_panel_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        statusText,
+                        color = TGU_Blue,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(22.dp)
+                    )
+                    Text(stringResource(R.string.nav_coord_format, coordA))
+                    Text(stringResource(R.string.nav_coord_b_format, coordB))
+                    Text(
+                        stringResource(R.string.nav_legend_text),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        LegendItem(Color(0xFFFF1744), stringResource(R.string.nav_legend_start))
+                        LegendItem(Color(0xFF2979FF), stringResource(R.string.nav_legend_end))
+                        LegendItem(Color.Red, stringResource(R.string.nav_legend_path))
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onResetClick,
+                            enabled = !isSearching,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                        ) { Text(stringResource(R.string.common_reset)) }
+
+                        OutlinedButton(
+                            onClick = onSwapClick,
+                            enabled = !isSearching && startNode != null && endNode != null,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                        ) { Text(stringResource(R.string.common_swap_ab)) }
+                    }
+                }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onResetClick,
-                    enabled = !isSearching,
-                    modifier = Modifier.weight(1f).height(46.dp)
-                ) { Text(stringResource(R.string.common_reset)) }
-
-                OutlinedButton(
-                    onClick = onSwapClick,
-                    enabled = !isSearching && startNode != null && endNode != null,
-                    modifier = Modifier.weight(1f).height(46.dp)
-                ) { Text(stringResource(R.string.common_swap_ab)) }
-            }
-
+            Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = onBuildClick,
                 enabled = !isSearching,
-                modifier = Modifier.fillMaxWidth().height(48.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = TGU_Blue)
             ) {
                 Text(
