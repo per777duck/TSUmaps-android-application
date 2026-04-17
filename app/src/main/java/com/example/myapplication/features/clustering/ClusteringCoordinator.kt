@@ -2,6 +2,7 @@ package com.example.myapplication.features.clustering
 
 import com.example.myapplication.algorithms.DBScan
 import com.example.myapplication.algorithms.KmeansAlgorithm
+import com.example.myapplication.algorithms.AStarAlgorithm
 import com.example.myapplication.algorithms.models.Cluster
 import com.example.myapplication.algorithms.models.AStarMetric
 import com.example.myapplication.algorithms.models.EuclideanMetric
@@ -17,8 +18,8 @@ enum class ClusterAlgorithmType{
 }
 
 object ClusteringCoordinator {
-    private const val DEFAULT_EPS = 20.0
-    private const val DEFAULT_MIN_POINTS = 4
+    private const val DEFAULT_EPS = 40.0
+    private const val DEFAULT_MIN_POINTS = 2
 
     suspend fun findingClusters(
         venues: List<Venue>,
@@ -51,7 +52,7 @@ object ClusteringCoordinator {
         val primaryMetricType = selectedMetric ?: MetricType.EUCLIDEAN
         val metric1 =  when (primaryMetricType) {
             MetricType.EUCLIDEAN -> EuclideanMetric()
-            MetricType.ASTAR -> AStarMetric(mapData)
+            MetricType.ASTAR -> AStarMetric(AStarAlgorithm(mapData))
         }
 
         val limitedClusterCount = clusterCount
@@ -79,7 +80,7 @@ object ClusteringCoordinator {
         }
         val metric2 = when (secondaryMetricType) {
             MetricType.EUCLIDEAN -> EuclideanMetric()
-            MetricType.ASTAR -> AStarMetric(mapData)
+            MetricType.ASTAR -> AStarMetric(AStarAlgorithm(mapData))
         }
 
         val secondaryResult = when (selectedAlgorithm) {

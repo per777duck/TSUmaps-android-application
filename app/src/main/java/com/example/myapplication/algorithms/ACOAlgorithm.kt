@@ -1,5 +1,6 @@
 package com.example.myapplication.algorithms
 
+import com.example.myapplication.algorithms.models.AStarMetric
 import com.example.myapplication.algorithms.models.IDistanceMetrics
 import com.example.myapplication.algorithms.models.Point
 import kotlin.math.pow
@@ -13,7 +14,8 @@ data class ACOParameters(
     val evaporationRate: Double = 0.45,
     val pheromoneDepositQ: Double = 120.0,
     val initialPheromone: Double = 1.0,
-    val returnToStart: Boolean = true
+    val returnToStart: Boolean = true,
+    val fixedStartIndex: Int? = null
 )
 
 data class ACORouteResult(
@@ -22,13 +24,14 @@ data class ACORouteResult(
     val distance: Double
 )
 
-class ACOAlgorithm(private val parameters: AntColonyOptimizationParameters = AntColonyOptimizationParameters())
-{
+class ACOAlgorithm(private val parameters: ACOParameters = ACOParameters()) {
 
-    suspend fun run(points: List<Point>, metric: IDistanceMetrics): AntColonyOptimizationRouteResult
-    {
-        require(points.isNotEmpty()) { "Список не должен быть пустым!" }
-        require(points.size >= 2) { "Необходимо выбрать минимум 2 точки!" }
+    suspend fun run(points: List<Point>, metric: IDistanceMetrics): ACORouteResult {
+        require(points.isNotEmpty()) { "Список достопримечательностей пустой" }
+        require(points.size >= 2) { "Нужно выбрать как минимум 2 точки!" }
+        parameters.fixedStartIndex?.let { fixedIndex ->
+            require(fixedIndex in points.indices) { "fixedStartIndex=$fixedIndex вне диапазона [0, ${points.lastIndex}]" }
+        }
 
         val distanceMatrix = computeDistanceMatrix(points, metric)
         val pheromones = Array(points.size) { DoubleArray(points.size) { parameters.initialPheromone } }
@@ -36,18 +39,20 @@ class ACOAlgorithm(private val parameters: AntColonyOptimizationParameters = Ant
         var globalBestRoute: List<Int>? = null
         var globalBestDistance = Double.POSITIVE_INFINITY
 
-        repeat(parameters.iterations)
-        {
+        repeat(parameters.iterations) {
             val iterationRoutes = mutableListOf<Pair<List<Int>, Double>>()
 
-            repeat(parameters.antCount)
-            {
-                val route = buildAntRoute(points.size, pheromones, distanceMatrix)
+            repeat(parameters.antCount) {
+                val route = buildAntRoute(
+                    size = points.size,
+                    pheromones = pheromones,
+                    distances = distanceMatrix,
+                    fixedStartIndex = parameters.fixedStartIndex
+                )
                 val distance = routeDistance(route, distanceMatrix, parameters.returnToStart)
                 iterationRoutes += route to distance
 
-                if (distance < globalBestDistance)
-                {
+                if (distance < globalBestDistance) {
                     globalBestDistance = distance
                     globalBestRoute = route
                 }
@@ -61,16 +66,19 @@ class ACOAlgorithm(private val parameters: AntColonyOptimizationParameters = Ant
             ?: throw IllegalStateException("ACO could not build any route")
 
         val orderedPoints = bestRoute.map { index -> points[index] }
-        val routeWithReturn = if (parameters.returnToStart)
-        {
+        val routeWithReturn = if (parameters.returnToStart) {
             orderedPoints + orderedPoints.first()
-        }
-        else {
+        } else {
             orderedPoints
         }
+        val renderedRoutePoints = if (metric is AStarMetric) {
+            metric.buildPolyline(routeWithReturn)
+        } else {
+            routeWithReturn
+        }
 
-        return AntColonyOptimizationRouteResult(
-            orderedPoints = routeWithReturn,
+        return ACORouteResult(
+            orderedPoints = renderedRoutePoints,
             orderedPointIds = routeWithReturn.map { it.id },
             distance = globalBestDistance
         )
@@ -79,16 +87,13 @@ class ACOAlgorithm(private val parameters: AntColonyOptimizationParameters = Ant
     private suspend fun computeDistanceMatrix(
         points: List<Point>,
         metric: IDistanceMetrics
-    ): Array<DoubleArray>
-    {
+    ): Array<DoubleArray> {
         val n = points.size
         val matrix = Array(n) { DoubleArray(n) { Double.POSITIVE_INFINITY } }
 
-        for (i in 0 until n)
-        {
+        for (i in 0 until n) {
             matrix[i][i] = 0.0
-            for (j in i + 1 until n)
-            {
+            for (j in i + 1 until n) {
                 val dist = metric.calculatingDistance(points[i], points[j])
                 matrix[i][j] = dist
                 matrix[j][i] = dist
@@ -100,16 +105,15 @@ class ACOAlgorithm(private val parameters: AntColonyOptimizationParameters = Ant
     private fun buildAntRoute(
         size: Int,
         pheromones: Array<DoubleArray>,
-        distances: Array<DoubleArray>
-    ): List<Int>
-    {
-        val start = Random.nextInt(size)
+        distances: Array<DoubleArray>,
+        fixedStartIndex: Int?
+    ): List<Int> {
+        val start = fixedStartIndex ?: Random.nextInt(size)
         val route = mutableListOf(start)
         val visited = BooleanArray(size)
         visited[start] = true
 
-        while (route.size < size)
-        {
+        while (route.size < size) {
             val current = route.last()
             val next = chooseNextNode(current, visited, pheromones, distances)
             route += next
@@ -124,14 +128,12 @@ class ACOAlgorithm(private val parameters: AntColonyOptimizationParameters = Ant
         visited: BooleanArray,
         pheromones: Array<DoubleArray>,
         distances: Array<DoubleArray>
-    ): Int
-    {
+    ): Int {
         val candidates = mutableListOf<Int>()
         val weights = mutableListOf<Double>()
         var weightSum = 0.0
 
-        for (next in visited.indices)
-        {
+        for (next in visited.indices) {
             if (visited[next]) continue
 
             val distance = distances[current][next]
@@ -148,18 +150,15 @@ class ACOAlgorithm(private val parameters: AntColonyOptimizationParameters = Ant
             weightSum += weight
         }
 
-        if (candidates.isEmpty())
-        {
+        if (candidates.isEmpty()) {
             return visited.indices.first { !visited[it] }
         }
 
         val threshold = Random.nextDouble() * weightSum
         var cumulative = 0.0
-        for (i in candidates.indices)
-        {
+        for (i in candidates.indices) {
             cumulative += weights[i]
-            if (cumulative >= threshold)
-            {
+            if (cumulative >= threshold) {
                 return candidates[i]
             }
         }
@@ -171,30 +170,24 @@ class ACOAlgorithm(private val parameters: AntColonyOptimizationParameters = Ant
         route: List<Int>,
         distances: Array<DoubleArray>,
         returnToStart: Boolean
-    ): Double
-    {
+    ): Double {
         var total = 0.0
 
-        for (i in 0 until route.lastIndex)
-        {
+        for (i in 0 until route.lastIndex) {
             total += distances[route[i]][route[i + 1]]
         }
 
-        if (returnToStart && route.size > 1)
-        {
+        if (returnToStart && route.size > 1) {
             total += distances[route.last()][route.first()]
         }
 
         return total
     }
 
-    private fun evaporatePheromones(pheromones: Array<DoubleArray>, evaporationRate: Double)
-    {
+    private fun evaporatePheromones(pheromones: Array<DoubleArray>, evaporationRate: Double) {
         val keepRatio = (1.0 - evaporationRate).coerceIn(0.0, 1.0)
-        for (i in pheromones.indices)
-        {
-            for (j in pheromones[i].indices)
-            {
+        for (i in pheromones.indices) {
+            for (j in pheromones[i].indices) {
                 pheromones[i][j] = (pheromones[i][j] * keepRatio).coerceAtLeast(1e-12)
             }
         }
@@ -203,23 +196,20 @@ class ACOAlgorithm(private val parameters: AntColonyOptimizationParameters = Ant
     private fun depositPheromones(
         pheromones: Array<DoubleArray>,
         routes: List<Pair<List<Int>, Double>>,
-        params: AntColonyOptimizationParameters
-    )
-    {
+        params: ACOParameters
+    ) {
         routes.forEach { (route, distance) ->
             if (!distance.isFinite() || distance <= 0.0) return@forEach
 
             val delta = params.pheromoneDepositQ / distance
-            for (i in 0 until route.lastIndex)
-            {
+            for (i in 0 until route.lastIndex) {
                 val from = route[i]
                 val to = route[i + 1]
                 pheromones[from][to] += delta
                 pheromones[to][from] += delta
             }
 
-            if (params.returnToStart && route.size > 1)
-            {
+            if (params.returnToStart && route.size > 1) {
                 val last = route.last()
                 val first = route.first()
                 pheromones[last][first] += delta

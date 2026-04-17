@@ -29,11 +29,52 @@ data class SearchState(
     val fullPath: List<Node>?
 )
 
+data class GeoBounds(
+    val northLatitude: Double,
+    val southLatitude: Double,
+    val westLongitude: Double,
+    val eastLongitude: Double
+)
+
 class AStarAlgorithm(private val mapData: MapData) {
 
     private val diagonalCost = 1.4
     private val straightCost = 1.0
     private val heuristicWeight = 0.25
+
+    fun nearestWalkable(x: Int, y: Int): Node? {
+        if (mapData.width == 0 || mapData.length == 0) return null
+        val clampedX = x.coerceIn(0, mapData.width - 1)
+        val clampedY = y.coerceIn(0, mapData.length - 1)
+        if (mapData.isAvailable(clampedX, clampedY)) return Node(clampedX, clampedY)
+
+        val maxRadius = maxOf(mapData.width, mapData.length)
+        for (radius in 1..maxRadius) {
+            for (dy in -radius..radius) {
+                for (dx in -radius..radius) {
+                    val nx = clampedX + dx
+                    val ny = clampedY + dy
+                    if (nx !in 0 until mapData.width || ny !in 0 until mapData.length) continue
+                    if (mapData.isAvailable(nx, ny)) return Node(nx, ny)
+                }
+            }
+        }
+        return null
+    }
+
+    fun geoToWalkableNode(latitude: Double, longitude: Double, bounds: GeoBounds): Node? {
+        val lonRange = bounds.eastLongitude - bounds.westLongitude
+        val latRange = bounds.northLatitude - bounds.southLatitude
+        if (lonRange <= 0.0 || latRange <= 0.0) return null
+        if (longitude < bounds.westLongitude || longitude > bounds.eastLongitude) return null
+        if (latitude < bounds.southLatitude || latitude > bounds.northLatitude) return null
+
+        val normalizedX = (longitude - bounds.westLongitude) / lonRange
+        val normalizedY = (bounds.northLatitude - latitude) / latRange
+        val gridX = (normalizedX * (mapData.width - 1)).toInt().coerceIn(0, mapData.width - 1)
+        val gridY = (normalizedY * (mapData.length - 1)).toInt().coerceIn(0, mapData.length - 1)
+        return nearestWalkable(gridX, gridY)
+    }
 
     private fun heuristic(a: Node, b: Node): Double {
         return max(abs(a.x - b.x), abs(a.y - b.y)).toDouble()

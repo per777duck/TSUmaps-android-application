@@ -1,5 +1,8 @@
 package com.example.myapplication.ui.screens
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -30,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -51,6 +56,8 @@ import com.example.myapplication.algorithms.Node
 import com.example.myapplication.data.map.MapCoordinateTransformer
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.map.MapRendering
+import com.example.myapplication.features.path.StartNodeResolveStatus
+import com.example.myapplication.features.path.UserLocationStartResolver
 import com.example.myapplication.ui.TGU_Blue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -60,10 +67,11 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun NavigatorScreen(mapData: MapData) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var startNode by remember { mutableStateOf<Node?>(null) }
     var endNode by remember { mutableStateOf<Node?>(null) }
-    var statusText by remember { mutableStateOf("Выберите начальную точку") }
+    var statusText by remember { mutableStateOf("Определяем текущее местоположение...") }
     var searchJob by remember { mutableStateOf<Job?>(null) }
     var isSearching by remember { mutableStateOf(false) }
 
@@ -74,6 +82,64 @@ fun NavigatorScreen(mapData: MapData) {
     var isControlPanelVisible by remember { mutableStateOf(false) }
 
     val algorithm = remember { AStarAlgorithm(mapData) }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (!granted) {
+            statusText = "Геопозиция недоступна. Выберите начальную точку вручную"
+            return@rememberLauncherForActivityResult
+        }
+
+        scope.launch {
+            val result = withContext(Dispatchers.Default) {
+                UserLocationStartResolver.resolveStartNode(context, algorithm)
+            }
+            when (result.status) {
+                StartNodeResolveStatus.SUCCESS -> {
+                    startNode = result.node
+                    statusText = "Начальная точка определена автоматически, выберите конечную"
+                }
+                StartNodeResolveStatus.OUT_OF_MAP_BOUNDS -> {
+                    statusText = "Геопозиция вне карты. Выберите начальную точку вручную"
+                }
+                StartNodeResolveStatus.LOCATION_UNAVAILABLE,
+                StartNodeResolveStatus.PERMISSION_DENIED -> {
+                    statusText = "Геопозиция недоступна. Выберите начальную точку вручную"
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (!UserLocationStartResolver.hasLocationPermission(context)) {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+            return@LaunchedEffect
+        }
+
+        val result = withContext(Dispatchers.Default) {
+            UserLocationStartResolver.resolveStartNode(context, algorithm)
+        }
+        when (result.status) {
+            StartNodeResolveStatus.SUCCESS -> {
+                startNode = result.node
+                statusText = "Начальная точка определена автоматически, выберите конечную"
+            }
+            StartNodeResolveStatus.OUT_OF_MAP_BOUNDS -> {
+                statusText = "Геопозиция вне карты. Выберите начальную точку вручную"
+            }
+            StartNodeResolveStatus.LOCATION_UNAVAILABLE,
+            StartNodeResolveStatus.PERMISSION_DENIED -> {
+                statusText = "Геопозиция недоступна. Выберите начальную точку вручную"
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         MapSection(
@@ -86,7 +152,7 @@ fun NavigatorScreen(mapData: MapData) {
             modifier = Modifier.fillMaxSize(),
             onMapClick = { node ->
                 if (isSearching) return@MapSection
-                val nearest = findNearestWalkable(mapData, node.x, node.y) ?: return@MapSection
+                val nearest = algorithm.nearestWalkable(node.x, node.y) ?: return@MapSection
                 if (startNode == null || endNode != null) {
                     startNode = nearest
                     endNode = null
@@ -356,24 +422,4 @@ fun InputSection(
             }
         }
     }
-}
-
-private fun findNearestWalkable(mapData: MapData, x: Int, y: Int): Node? {
-    if (mapData.width == 0 || mapData.length == 0) return null
-    val clampedX = x.coerceIn(0, mapData.width - 1)
-    val clampedY = y.coerceIn(0, mapData.length - 1)
-    if (mapData.isAvailable(clampedX, clampedY)) return Node(clampedX, clampedY)
-
-    val maxRadius = maxOf(mapData.width, mapData.length)
-    for (radius in 1..maxRadius) {
-        for (dy in -radius..radius) {
-            for (dx in -radius..radius) {
-                val nx = clampedX + dx
-                val ny = clampedY + dy
-                if (nx !in 0 until mapData.width || ny !in 0 until mapData.length) continue
-                if (mapData.isAvailable(nx, ny)) return Node(nx, ny)
-            }
-        }
-    }
-    return null
 }
