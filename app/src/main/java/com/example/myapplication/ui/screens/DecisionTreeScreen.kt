@@ -47,8 +47,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -69,9 +69,9 @@ import com.example.myapplication.algorithms.decisiontree.DecisionTreeNode
 import com.example.myapplication.algorithms.decisiontree.Id3DecisionTree
 import com.example.myapplication.algorithms.decisiontree.TrainingSet
 import com.example.myapplication.data.venues.foodVenueForRecommendedPlace
+import com.example.myapplication.ui.components.DecisionTreeVisual
 import com.example.myapplication.ui.components.TGU_Blue
 import com.example.myapplication.ui.components.TGU_Gold
-import com.example.myapplication.ui.components.DecisionTreeVisual
 import com.example.myapplication.ui.components.uiFeatureTitle
 import com.example.myapplication.ui.components.uiHumanizePathStep
 import com.example.myapplication.ui.components.uiPlaceTitle
@@ -80,7 +80,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private const val BUILTIN_TRAINING_CSV = """location,budget,time_available,food_type,queue_tolerance,weather,recommended_place
+private const val BUILTIN_TRAINING_CSV =
+    """location,budget,time_available,food_type,queue_tolerance,weather,recommended_place
 main_building,low,medium,full_meal,medium,good,Main_Cafeteria
 main_building,low,short,snack,low,good,Yarche
 main_building,medium,short,coffee,low,good,Bus_Stop_Coffee
@@ -142,7 +143,12 @@ private fun StepHeader(number: Int, title: String, subtitle: String? = null) {
             )
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TGU_Blue)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = TGU_Blue
+            )
             subtitle?.let {
                 Text(
                     it,
@@ -230,7 +236,8 @@ fun DecisionTreeScreen(
 
     LaunchedEffect(Unit) {
         parseError = null
-        val result = withContext(Dispatchers.Default) { CsvTrainingParser.parse(BUILTIN_TRAINING_CSV) }
+        val result =
+            withContext(Dispatchers.Default) { CsvTrainingParser.parse(BUILTIN_TRAINING_CSV) }
         result.fold(
             onSuccess = { ts ->
                 val maxDepthValue = maxDepth.toInt().coerceAtLeast(1)
@@ -278,8 +285,16 @@ fun DecisionTreeScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
-                    Icon(Icons.Default.Lightbulb, contentDescription = null, tint = TGU_Gold, modifier = Modifier.size(20.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        Icons.Default.Lightbulb,
+                        contentDescription = null,
+                        tint = TGU_Gold,
+                        modifier = Modifier.size(20.dp)
+                    )
                     Text(
                         stringResource(R.string.decision_intro_tip),
                         style = MaterialTheme.typography.bodySmall,
@@ -311,7 +326,9 @@ fun DecisionTreeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        if (treeDiagramCollapsed) stringResource(R.string.decision_show_diagram) else stringResource(R.string.decision_hide_diagram),
+                        if (treeDiagramCollapsed) stringResource(R.string.decision_show_diagram) else stringResource(
+                            R.string.decision_hide_diagram
+                        ),
                         style = MaterialTheme.typography.labelLarge,
                         color = TGU_Blue
                     )
@@ -325,17 +342,30 @@ fun DecisionTreeScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         when {
                             parseError != null && tree == null -> {
-                                Text(parseError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    parseError!!,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
                             }
+
                             tree == null -> {
-                                Text(stringResource(R.string.decision_building_tree), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    stringResource(R.string.decision_building_tree),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
+
                             else -> {
                                 tree?.let { root ->
                                     DecisionTreeVisual(node = root)
                                     training?.let { ts ->
                                         Text(
-                                            stringResource(R.string.decision_dataset_stats, ts.rows.size, nodeCount),
+                                            stringResource(
+                                                R.string.decision_dataset_stats,
+                                                ts.rows.size,
+                                                nodeCount
+                                            ),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -359,8 +389,16 @@ fun DecisionTreeScreen(
                     title = stringResource(R.string.decision_step2_title),
                     subtitle = stringResource(R.string.decision_step2_subtitle)
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.TouchApp, contentDescription = null, tint = TGU_Blue, modifier = Modifier.size(22.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.TouchApp,
+                        contentDescription = null,
+                        tint = TGU_Blue,
+                        modifier = Modifier.size(22.dp)
+                    )
                     Text(
                         stringResource(R.string.decision_new_lunch_data),
                         style = MaterialTheme.typography.titleSmall,
@@ -376,7 +414,9 @@ fun DecisionTreeScreen(
                 } else {
                     featureChoices.forEach { (name, values) ->
                         key(name) {
-                            Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                            Column(Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp)) {
                                 Text(
                                     uiFeatureTitle(name),
                                     style = MaterialTheme.typography.titleSmall,
@@ -390,13 +430,17 @@ fun DecisionTreeScreen(
                                             .fillMaxWidth()
                                             .clip(MaterialTheme.shapes.small)
                                             .clickable {
-                                                selectedFeatures = selectedFeatures + (name to option)
+                                                selectedFeatures =
+                                                    selectedFeatures + (name to option)
                                             }
                                             .padding(vertical = 4.dp, horizontal = 2.dp)
                                     ) {
                                         RadioButton(
                                             selected = selectedFeatures[name] == option,
-                                            onClick = { selectedFeatures = selectedFeatures + (name to option) },
+                                            onClick = {
+                                                selectedFeatures =
+                                                    selectedFeatures + (name to option)
+                                            },
                                             colors = RadioButtonDefaults.colors(selectedColor = TGU_Blue)
                                         )
                                         Text(
@@ -426,21 +470,32 @@ fun DecisionTreeScreen(
                         when {
                             reason.contains(context.getString(R.string.decision_missing_feature_marker)) ->
                                 context.getString(R.string.decision_missing_answer_note)
+
                             reason.contains(context.getString(R.string.decision_unseen_marker)) ->
                                 context.getString(R.string.decision_unseen_combination_note)
+
                             else -> reason
                         }
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth().height(54.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
             enabled = tree != null && featureChoices.isNotEmpty(),
             colors = ButtonDefaults.buttonColors(containerColor = TGU_Blue),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Icon(Icons.Default.Restaurant, contentDescription = null, modifier = Modifier.size(22.dp))
+            Icon(
+                Icons.Default.Restaurant,
+                contentDescription = null,
+                modifier = Modifier.size(22.dp)
+            )
             Spacer(Modifier.size(8.dp))
-            Text(stringResource(R.string.decision_get_recommendation), style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(R.string.decision_get_recommendation),
+                style = MaterialTheme.typography.titleSmall
+            )
         }
 
         recommendedRaw?.let { raw ->
@@ -477,13 +532,22 @@ fun DecisionTreeScreen(
             if (venueForMap != null) {
                 OutlinedButton(
                     onClick = { onOpenPlaceOnMap(venueForMap.mapPosition) },
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = TGU_Blue),
                     shape = RoundedCornerShape(14.dp)
                 ) {
-                    Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(22.dp))
+                    Icon(
+                        Icons.Default.Map,
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp)
+                    )
                     Spacer(Modifier.size(8.dp))
-                    Text(stringResource(R.string.decision_open_on_map), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        stringResource(R.string.decision_open_on_map),
+                        style = MaterialTheme.typography.titleSmall
+                    )
                 }
             } else {
                 Text(
@@ -496,12 +560,27 @@ fun DecisionTreeScreen(
             if (pathStepsHuman.isNotEmpty()) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
+                            alpha = 0.4f
+                        )
+                    ),
                     shape = RoundedCornerShape(20.dp)
                 ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.Psychology, contentDescription = null, tint = TGU_Blue, modifier = Modifier.size(22.dp))
+                    Column(
+                        Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Psychology,
+                                contentDescription = null,
+                                tint = TGU_Blue,
+                                modifier = Modifier.size(22.dp)
+                            )
                             Text(
                                 stringResource(R.string.decision_tree_path_title),
                                 style = MaterialTheme.typography.titleSmall,
@@ -574,7 +653,10 @@ fun DecisionTreeScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Icon(Icons.Default.Settings, contentDescription = null, tint = TGU_Blue)
                 Column {
                     Text(
@@ -616,7 +698,9 @@ fun DecisionTreeScreen(
                     OutlinedTextField(
                         value = csvText,
                         onValueChange = { csvText = it },
-                        modifier = Modifier.fillMaxWidth().height(140.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp),
                         textStyle = MaterialTheme.typography.bodySmall,
                         minLines = 5,
                         label = { Text(stringResource(R.string.decision_csv_label)) },
@@ -639,8 +723,15 @@ fun DecisionTreeScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(stringResource(R.string.decision_depth), style = MaterialTheme.typography.labelMedium, modifier = Modifier.width(72.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            stringResource(R.string.decision_depth),
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.width(72.dp)
+                        )
                         Slider(
                             value = maxDepth,
                             onValueChange = { maxDepth = it },
@@ -648,10 +739,16 @@ fun DecisionTreeScreen(
                             steps = 10,
                             modifier = Modifier.weight(1f)
                         )
-                        Text("${maxDepth.toInt()}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                        Text(
+                            "${maxDepth.toInt()}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = compressForDisplay, onCheckedChange = { compressForDisplay = it })
+                        Checkbox(
+                            checked = compressForDisplay,
+                            onCheckedChange = { compressForDisplay = it })
                         Text(
                             stringResource(R.string.decision_simplify_tree),
                             style = MaterialTheme.typography.bodySmall
@@ -666,11 +763,19 @@ fun DecisionTreeScreen(
                         Text(stringResource(R.string.decision_apply_rebuild))
                     }
                     parseError?.let { err ->
-                        Text(err, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            err,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
                     training?.let { ts ->
                         Text(
-                            stringResource(R.string.decision_training_stats, ts.rows.size, nodeCount),
+                            stringResource(
+                                R.string.decision_training_stats,
+                                ts.rows.size,
+                                nodeCount
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

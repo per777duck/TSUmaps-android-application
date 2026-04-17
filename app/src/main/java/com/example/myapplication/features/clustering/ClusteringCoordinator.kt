@@ -1,17 +1,17 @@
 package com.example.myapplication.features.clustering
 
-import com.example.myapplication.algorithms.clusterization.DBScan
-import com.example.myapplication.algorithms.clusterization.KmeansAlgorithm
-import com.example.myapplication.algorithms.clusterization.Cluster
 import com.example.myapplication.algorithms.clusterization.AStarMetric
+import com.example.myapplication.algorithms.clusterization.Cluster
+import com.example.myapplication.algorithms.clusterization.DBScan
 import com.example.myapplication.algorithms.clusterization.EuclideanMetric
+import com.example.myapplication.algorithms.clusterization.KmeansAlgorithm
 import com.example.myapplication.algorithms.clusterization.Point
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.venues.MetricType
 import com.example.myapplication.data.venues.Venue
 import com.example.myapplication.data.venues.VenueType
 
-enum class ClusterAlgorithmType{
+enum class ClusterAlgorithmType {
     KMEANS,
     DBSCAN
 }
@@ -31,8 +31,7 @@ object ClusteringCoordinator {
     ): Pair<List<Pair<Venue, Int>>, List<Pair<Venue, Int>>> {
         val filteredVenues = if (selectedType == null) {
             venues
-        }
-        else {
+        } else {
             venues.filter { it.type == selectedType }
         }
 
@@ -49,7 +48,7 @@ object ClusteringCoordinator {
         }
 
         val primaryMetricType = selectedMetric ?: MetricType.EUCLIDEAN
-        val metric1 =  when (primaryMetricType) {
+        val metric1 = when (primaryMetricType) {
             MetricType.EUCLIDEAN -> EuclideanMetric()
             MetricType.ASTAR -> AStarMetric(mapData)
         }
@@ -63,6 +62,7 @@ object ClusteringCoordinator {
             ClusterAlgorithmType.KMEANS -> {
                 KmeansAlgorithm(limitedClusterCount).run(points, metric1)
             }
+
             ClusterAlgorithmType.DBSCAN -> {
                 DBScan(DEFAULT_EPS, DEFAULT_MIN_POINTS).run(points, metric1)
             }
@@ -86,6 +86,7 @@ object ClusteringCoordinator {
             ClusterAlgorithmType.KMEANS -> {
                 KmeansAlgorithm(limitedClusterCount).run(points, metric2)
             }
+
             ClusterAlgorithmType.DBSCAN -> {
                 DBScan(DEFAULT_EPS, DEFAULT_MIN_POINTS).run(points, metric2)
             }
@@ -101,7 +102,9 @@ object ClusteringCoordinator {
         return venues.map { venue ->
             venue to (clusters.find { cluster ->
                 cluster.points.any { point ->
-                    point.id == venue.id } }?.id ?: -1)
+                    point.id == venue.id
+                }
+            }?.id ?: -1)
         }
     }
 }

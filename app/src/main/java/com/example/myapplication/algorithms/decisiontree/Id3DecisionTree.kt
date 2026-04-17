@@ -49,7 +49,8 @@ object Id3DecisionTree {
                 val compressed = node.children.mapValues { compressRedundant(it.value) }
                 val onlyLeaves = compressed.values.all { it is DecisionTreeNode.Leaf }
                 if (onlyLeaves) {
-                    val labels = compressed.values.map { (it as DecisionTreeNode.Leaf).label }.distinct()
+                    val labels =
+                        compressed.values.map { (it as DecisionTreeNode.Leaf).label }.distinct()
                     if (labels.size == 1) {
                         return DecisionTreeNode.Leaf(labels.first())
                     }
@@ -71,7 +72,9 @@ object Id3DecisionTree {
                     val nextIndent = indent + if (last) "   " else "│  "
                     append(indent).append(branch).append(value).append('\n')
                     when (child) {
-                        is DecisionTreeNode.Leaf -> append(nextIndent).append("→ ").appendLine(child.label)
+                        is DecisionTreeNode.Leaf -> append(nextIndent).append("→ ")
+                            .appendLine(child.label)
+
                         is DecisionTreeNode.Internal -> append(formatTree(child, nextIndent))
                     }
                 }
@@ -114,7 +117,11 @@ object Id3DecisionTree {
                 buildSubtree(subset, remaining, targetName, maxDepth, currentDepth + 1)
             }
         }
-        return DecisionTreeNode.Internal(attribute = best, children = children, fallbackLabel = fallback)
+        return DecisionTreeNode.Internal(
+            attribute = best,
+            children = children,
+            fallbackLabel = fallback
+        )
     }
 
     private fun majorityLabel(rows: List<Map<String, String>>, targetName: String): String {

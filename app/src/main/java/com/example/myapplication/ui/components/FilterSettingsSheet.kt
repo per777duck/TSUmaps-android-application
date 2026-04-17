@@ -73,10 +73,17 @@ fun FilterSettingsContent(
             .padding(bottom = 32.dp)
             .verticalScroll(scrollState)
     ) {
-        Text(stringResource(R.string.cluster_settings_title), style = MaterialTheme.typography.headlineSmall, color = TGU_Blue)
+        Text(
+            stringResource(R.string.cluster_settings_title),
+            style = MaterialTheme.typography.headlineSmall,
+            color = TGU_Blue
+        )
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(stringResource(R.string.cluster_venue_type), style = MaterialTheme.typography.labelLarge)
+        Text(
+            stringResource(R.string.cluster_venue_type),
+            style = MaterialTheme.typography.labelLarge
+        )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
                 selected = selectedType == null,
@@ -100,7 +107,10 @@ fun FilterSettingsContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(stringResource(R.string.cluster_metric_title), style = MaterialTheme.typography.labelLarge)
+        Text(
+            stringResource(R.string.cluster_metric_title),
+            style = MaterialTheme.typography.labelLarge
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricType.entries.forEach { metric ->
                 FilterChip(
@@ -120,7 +130,10 @@ fun FilterSettingsContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(stringResource(R.string.cluster_algorithm_title), style = MaterialTheme.typography.labelLarge)
+        Text(
+            stringResource(R.string.cluster_algorithm_title),
+            style = MaterialTheme.typography.labelLarge
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ClusterAlgorithmType.entries.forEach { algorithm ->
                 FilterChip(
@@ -139,7 +152,10 @@ fun FilterSettingsContent(
         Spacer(modifier = Modifier.height(8.dp))
 
         if (selectedAlgorithm == ClusterAlgorithmType.KMEANS) {
-            Text(stringResource(R.string.cluster_count_format, clusterCount), style = MaterialTheme.typography.labelLarge)
+            Text(
+                stringResource(R.string.cluster_count_format, clusterCount),
+                style = MaterialTheme.typography.labelLarge
+            )
             Slider(
                 value = clusterCount.toFloat(),
                 onValueChange = { onClusterCountChange(it.toInt().coerceIn(2, 10)) },

@@ -144,10 +144,12 @@ fun NavigatorScreen(
                             statusChooseEnd
                         }
                     }
+
                     endNode == null -> {
                         endNode = nearest
                         statusText = statusCanBuild
                     }
+
                     else -> {
                         // Keep focused destination; repeated tap updates only start point.
                         startNode = nearest
@@ -229,7 +231,10 @@ fun NavigatorScreen(
                                                 displayedPath = currentPath.take(i)
                                                 delay(8L)
                                             }
-                                            statusText = context.getString(R.string.nav_status_path_found, currentPath.size)
+                                            statusText = context.getString(
+                                                R.string.nav_status_path_found,
+                                                currentPath.size
+                                            )
                                         } else {
                                             statusText = statusPathNotFound
                                         }
@@ -251,7 +256,10 @@ fun NavigatorScreen(
             containerColor = TGU_Blue,
             contentColor = Color.White
         ) {
-            Icon(Icons.Default.Tune, contentDescription = stringResource(R.string.content_desc_nav_panel))
+            Icon(
+                Icons.Default.Tune,
+                contentDescription = stringResource(R.string.content_desc_nav_panel)
+            )
         }
     }
 }
@@ -478,7 +486,9 @@ fun InputSection(
                 colors = ButtonDefaults.buttonColors(containerColor = TGU_Blue)
             ) {
                 Text(
-                    if (isSearching) stringResource(R.string.common_searching_upper) else stringResource(R.string.common_build_route_upper),
+                    if (isSearching) stringResource(R.string.common_searching_upper) else stringResource(
+                        R.string.common_build_route_upper
+                    ),
                     color = Color.White
                 )
             }
@@ -488,7 +498,10 @@ fun InputSection(
 
 @Composable
 private fun LegendItem(color: Color, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
         Box(
             modifier = Modifier
                 .size(10.dp)
@@ -501,7 +514,8 @@ private fun LegendItem(color: Color, text: String) {
 
 private fun mapPixelOffsetToWalkableNode(mapData: MapData, offset: Offset): Node? {
     val gx = (offset.x / CAMPUS_MAP_WIDTH_PX * mapData.width).toInt().coerceIn(0, mapData.width - 1)
-    val gy = (offset.y / CAMPUS_MAP_HEIGHT_PX * mapData.length).toInt().coerceIn(0, mapData.length - 1)
+    val gy =
+        (offset.y / CAMPUS_MAP_HEIGHT_PX * mapData.length).toInt().coerceIn(0, mapData.length - 1)
     return findNearestWalkable(mapData, gx, gy)
 }
 

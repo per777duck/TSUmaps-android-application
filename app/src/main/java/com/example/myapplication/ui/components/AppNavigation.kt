@@ -2,6 +2,7 @@ package com.example.myapplication.ui.components
 
 import android.view.animation.Interpolator
 import android.view.animation.OvershootInterpolator
+import androidx.annotation.StringRes
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
@@ -13,11 +14,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -49,9 +50,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -64,7 +65,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.annotation.StringRes
 import com.example.myapplication.R
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.map.MapMatrixLoader
@@ -148,7 +148,9 @@ fun MainScreenWithNavigation() {
             }
         }
     ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+        Column(modifier = Modifier
+            .padding(innerPadding)
+            .fillMaxSize()) {
             CenterAlignedTopAppBar(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -161,7 +163,11 @@ fun MainScreenWithNavigation() {
                                 contentDescription = stringResource(R.string.content_desc_tgu_logo_en),
                                 modifier = Modifier.size(28.dp)
                             )
-                            Text(stringResource(R.string.main_title), fontWeight = FontWeight.Bold, color = TGU_Blue)
+                            Text(
+                                stringResource(R.string.main_title),
+                                fontWeight = FontWeight.Bold,
+                                color = TGU_Blue
+                            )
                         }
                         Text(
                             stringResource(R.string.main_subtitle),
@@ -175,7 +181,9 @@ fun MainScreenWithNavigation() {
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
             )
 
-            Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)) {
                 val loadedMapData = mapData
                 if (loadedMapData == null) {
                     val loadingText = if (mapLoadingFailed) {
@@ -201,6 +209,7 @@ fun MainScreenWithNavigation() {
                             venueFocusMapPosition = pendingVenueOnMap,
                             onVenueFocusHandled = { pendingVenueOnMap = null }
                         )
+
                         AlgorithmTab.Clustering -> {
                             AlgorithmCard(
                                 tab = selectedTab,
@@ -215,6 +224,7 @@ fun MainScreenWithNavigation() {
                                 onComparisonModeChange = { isComparisonMode = it }
                             )
                         }
+
                         else -> AlgorithmCard(
                             selectedTab,
                             mapData = loadedMapData,
@@ -263,12 +273,16 @@ fun AlgorithmCard(
                 onClusterCountChange = onClusterCountChange,
                 onComparisonModeChange = onComparisonModeChange
             )
+
             AlgorithmTab.Genetic -> GeneticMealRouteScreen(mapData = mapData)
             AlgorithmTab.DecisionTree -> DecisionTreeScreen(
                 onOpenPlaceOnMap = onOpenRecommendedPlaceOnMap
             )
+
             else -> Column(
-                modifier = Modifier.padding(24.dp).fillMaxSize(),
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 val tabTitle = stringResource(tab.titleRes)
@@ -294,12 +308,16 @@ fun SplashScreen(onFinished: () -> Unit) {
     val headAngle by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
-        animationSpec = infiniteRepeatable(keyframes { durationMillis = 2500; 0f at 0; 360f at 2500 })
+        animationSpec = infiniteRepeatable(keyframes {
+            durationMillis = 2500; 0f at 0; 360f at 2500
+        })
     )
     val tailAngle by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
-        animationSpec = infiniteRepeatable(keyframes { durationMillis = 2500; 0f at 600; 360f at 2500 })
+        animationSpec = infiniteRepeatable(keyframes {
+            durationMillis = 2500; 0f at 600; 360f at 2500
+        })
     )
 
     LaunchedEffect(Unit) {
@@ -314,7 +332,12 @@ fun SplashScreen(onFinished: () -> Unit) {
         onFinished()
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.White), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White),
+        contentAlignment = Alignment.Center
+    ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier

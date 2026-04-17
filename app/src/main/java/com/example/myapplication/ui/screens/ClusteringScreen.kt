@@ -2,8 +2,8 @@ package com.example.myapplication.ui.screens
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -32,11 +32,11 @@ import com.example.myapplication.data.map.MapRendering.TguMapWrapper
 import com.example.myapplication.data.venues.MetricType
 import com.example.myapplication.data.venues.Venue
 import com.example.myapplication.data.venues.VenueType
+import com.example.myapplication.features.clustering.ClusterAlgorithmType
 import com.example.myapplication.features.clustering.ClusteringCoordinator
 import com.example.myapplication.ui.components.ClusterColors
 import com.example.myapplication.ui.components.FilterSettingsContent
 import com.example.myapplication.ui.components.TGU_Blue
-import com.example.myapplication.features.clustering.ClusterAlgorithmType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -97,7 +97,8 @@ fun ClusteringScreen(
                     }
 
                     if (isComparisonMode) {
-                        val clusterId2 = secondaryClusters.find { it.first.id == venue.id }?.second ?: -1
+                        val clusterId2 =
+                            secondaryClusters.find { it.first.id == venue.id }?.second ?: -1
                         val color2 = if (clusterId2 != -1) {
                             ClusterColors[clusterId2 % ClusterColors.size]
                         } else {
@@ -160,7 +161,10 @@ fun ClusteringScreen(
             containerColor = TGU_Blue,
             contentColor = Color.White
         ) {
-            Icon(Icons.Default.FilterList, contentDescription = stringResource(R.string.content_desc_cluster_filters))
+            Icon(
+                Icons.Default.FilterList,
+                contentDescription = stringResource(R.string.content_desc_cluster_filters)
+            )
         }
     }
 }

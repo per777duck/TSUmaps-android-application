@@ -19,18 +19,21 @@ internal fun uiValueLabel(featureKey: String, raw: String): String {
             "campus_center" -> "Кампус-центр"
             else -> raw.replace('_', ' ')
         }
+
         "budget" -> when (raw) {
             "low" -> "Небольшой"
             "medium" -> "Средний"
             "high" -> "Без ограничений"
             else -> raw
         }
+
         "time_available" -> when (raw) {
             "very_short" -> "Очень мало (пара минут)"
             "short" -> "Немного"
             "medium" -> "Достаточно"
             else -> raw.replace('_', ' ')
         }
+
         "food_type" -> when (raw) {
             "coffee" -> "Кофе"
             "pancakes" -> "Блины"
@@ -39,17 +42,20 @@ internal fun uiValueLabel(featureKey: String, raw: String): String {
             "snack" -> "Перекус"
             else -> raw.replace('_', ' ')
         }
+
         "queue_tolerance" -> when (raw) {
             "low" -> "Не хочу ждать"
             "medium" -> "Могу немного подождать"
             "high" -> "Готов подождать"
             else -> raw
         }
+
         "weather" -> when (raw) {
             "good" -> "Хорошая, можно дойти"
             "bad" -> "Плохая, ближе к выходу"
             else -> raw
         }
+
         else -> raw.replace('_', ' ')
     }
 }

@@ -41,14 +41,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.R
 import com.example.myapplication.algorithms.routes.AStarAlgorithm
+import com.example.myapplication.algorithms.routes.GeneticIterationUpdate
+import com.example.myapplication.algorithms.routes.GeneticMealRouteResult
+import com.example.myapplication.algorithms.routes.MealRouteGeneticAlgorithm
+import com.example.myapplication.algorithms.routes.RouteStop
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.map.MapRendering
 import com.example.myapplication.data.venues.FoodItem
@@ -58,10 +62,6 @@ import com.example.myapplication.data.venues.dinnerPreset
 import com.example.myapplication.data.venues.foodVenues
 import com.example.myapplication.data.venues.lunchPreset
 import com.example.myapplication.data.venues.userStartMapPoint
-import com.example.myapplication.algorithms.routes.GeneticIterationUpdate
-import com.example.myapplication.algorithms.routes.GeneticMealRouteResult
-import com.example.myapplication.algorithms.routes.MealRouteGeneticAlgorithm
-import com.example.myapplication.algorithms.routes.RouteStop
 import com.example.myapplication.features.path.CampusPathPlanner
 import com.example.myapplication.features.path.CampusRoutingContext
 import com.example.myapplication.ui.components.TGU_Blue
@@ -138,7 +138,9 @@ fun GeneticMealRouteScreen(mapData: MapData) {
                 val points = if (segment != null && segment.isNotEmpty()) {
                     segment.map { node -> CampusPathPlanner.nodeToMapOffset(mapData, node) }
                 } else {
-                    listOf(routingContext.venueDisplayOffsets[stop.venue.id] ?: stop.venue.mapPosition)
+                    listOf(
+                        routingContext.venueDisplayOffsets[stop.venue.id] ?: stop.venue.mapPosition
+                    )
                 }
                 if (points.size >= 2) {
                     built += points
@@ -177,7 +179,11 @@ fun GeneticMealRouteScreen(mapData: MapData) {
                     routing = routing
                 )
             }
-            Text(legendText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                legendText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             Text(statusText, color = TGU_Blue)
 
@@ -190,13 +196,23 @@ fun GeneticMealRouteScreen(mapData: MapData) {
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    val minutes = finalResult?.bestTravelMinutes ?: progressUpdate?.bestTravelMinutes ?: 0
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val minutes =
+                        finalResult?.bestTravelMinutes ?: progressUpdate?.bestTravelMinutes ?: 0
                     Text(stringResource(R.string.genetic_best_route, minutes, displayedRoute.size))
-                    Text(stringResource(R.string.genetic_collected, displayedCollected.joinToString { it.title }))
+                    Text(
+                        stringResource(
+                            R.string.genetic_collected,
+                            displayedCollected.joinToString { it.title })
+                    )
                     if (displayedMissing.isNotEmpty()) {
                         Text(
-                            text = stringResource(R.string.genetic_missing, displayedMissing.joinToString { it.title }),
+                            text = stringResource(
+                                R.string.genetic_missing,
+                                displayedMissing.joinToString { it.title }),
                             color = Color(0xFFB00020)
                         )
                     }
@@ -222,7 +238,10 @@ fun GeneticMealRouteScreen(mapData: MapData) {
                 .align(Alignment.BottomStart)
                 .padding(start = 20.dp, bottom = 20.dp)
         ) {
-            Icon(Icons.Default.FilterList, contentDescription = stringResource(R.string.content_desc_genetic_filters))
+            Icon(
+                Icons.Default.FilterList,
+                contentDescription = stringResource(R.string.content_desc_genetic_filters)
+            )
         }
     }
 
@@ -279,9 +298,16 @@ fun GeneticMealRouteScreen(mapData: MapData) {
                         finalResult = result
                         isRunning = false
                         statusText = if (result.missingItems.isEmpty()) {
-                            context.getString(R.string.genetic_status_built, result.route.size, result.bestTravelMinutes)
+                            context.getString(
+                                R.string.genetic_status_built,
+                                result.route.size,
+                                result.bestTravelMinutes
+                            )
                         } else {
-                            context.getString(R.string.genetic_status_not_all_available, result.missingItems.size)
+                            context.getString(
+                                R.string.genetic_status_not_all_available,
+                                result.missingItems.size
+                            )
                         }
                     }
                 },
@@ -349,7 +375,8 @@ private fun GeneticRouteMap(
             }
 
             route.forEachIndexed { idx, stop ->
-                val center = routing?.venueDisplayOffsets?.get(stop.venue.id) ?: stop.venue.mapPosition
+                val center =
+                    routing?.venueDisplayOffsets?.get(stop.venue.id) ?: stop.venue.mapPosition
                 drawCircle(
                     color = Color.White,
                     radius = (10f / currentScale).coerceAtLeast(3f),
@@ -388,13 +415,29 @@ private fun FilterPanelContent(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text(stringResource(R.string.genetic_filter_title), fontWeight = FontWeight.SemiBold, color = TGU_Blue)
-        Text(stringResource(R.string.genetic_user_speed), style = MaterialTheme.typography.bodyMedium)
+        Text(
+            stringResource(R.string.genetic_filter_title),
+            fontWeight = FontWeight.SemiBold,
+            color = TGU_Blue
+        )
+        Text(
+            stringResource(R.string.genetic_user_speed),
+            style = MaterialTheme.typography.bodyMedium
+        )
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onBreakfast, enabled = !isRunning) { Text(stringResource(R.string.food_category_breakfast)) }
-            OutlinedButton(onClick = onLunch, enabled = !isRunning) { Text(stringResource(R.string.food_category_lunch)) }
-            OutlinedButton(onClick = onDinner, enabled = !isRunning) { Text(stringResource(R.string.food_category_dinner)) }
+            OutlinedButton(
+                onClick = onBreakfast,
+                enabled = !isRunning
+            ) { Text(stringResource(R.string.food_category_breakfast)) }
+            OutlinedButton(
+                onClick = onLunch,
+                enabled = !isRunning
+            ) { Text(stringResource(R.string.food_category_lunch)) }
+            OutlinedButton(
+                onClick = onDinner,
+                enabled = !isRunning
+            ) { Text(stringResource(R.string.food_category_dinner)) }
         }
 
         Column(
@@ -428,7 +471,10 @@ private fun FilterPanelContent(
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Button(
                 onClick = onBuildClick,
                 enabled = !isRunning,
@@ -436,7 +482,9 @@ private fun FilterPanelContent(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    if (isRunning) stringResource(R.string.common_searching_upper) else stringResource(R.string.common_build_route_upper),
+                    if (isRunning) stringResource(R.string.common_searching_upper) else stringResource(
+                        R.string.common_build_route_upper
+                    ),
                     color = Color.White
                 )
             }
@@ -457,9 +505,16 @@ private fun RouteRow(index: Int, stop: RouteStop) {
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             Text("$index. ${stop.venue.name}", fontWeight = FontWeight.SemiBold)
-            Text(stringResource(R.string.genetic_purchase, stop.purchasedItems.joinToString { it.title }))
+            Text(
+                stringResource(
+                    R.string.genetic_purchase,
+                    stop.purchasedItems.joinToString { it.title })
+            )
             Text(
                 stringResource(
                     R.string.genetic_arrival_departure,

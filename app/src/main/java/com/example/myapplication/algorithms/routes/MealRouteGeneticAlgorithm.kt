@@ -202,7 +202,8 @@ object MealRouteGeneticAlgorithm {
         val missingPenalty = missingItems.size * 900.0
         val extraStopsPenalty = routeStops.size * 14.0
         val timePenalty = elapsedMinutes.toDouble()
-        val fitness = timePenalty + missingPenalty + extraStopsPenalty + operationalPenalty - urgencyReward
+        val fitness =
+            timePenalty + missingPenalty + extraStopsPenalty + operationalPenalty - urgencyReward
 
         return GenomeEvaluation(
             fitness = fitness,
@@ -232,11 +233,16 @@ object MealRouteGeneticAlgorithm {
         random: Random,
         tournamentSize: Int = 4
     ): List<Int> {
-        val candidates = List(tournamentSize) { scoredPopulation[random.nextInt(scoredPopulation.size)] }
+        val candidates =
+            List(tournamentSize) { scoredPopulation[random.nextInt(scoredPopulation.size)] }
         return candidates.minByOrNull { it.second.fitness }!!.first
     }
 
-    private fun orderedCrossover(parentA: List<Int>, parentB: List<Int>, random: Random): List<Int> {
+    private fun orderedCrossover(
+        parentA: List<Int>,
+        parentB: List<Int>,
+        random: Random
+    ): List<Int> {
         val size = parentA.size
         if (size <= 2) return parentA
 

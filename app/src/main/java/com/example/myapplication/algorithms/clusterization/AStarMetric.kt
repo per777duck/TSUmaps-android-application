@@ -11,7 +11,7 @@ class AStarMetric(private val mapData: MapData) : IDistanceMetrics {
         val startNode = Node(p1.x.toInt(), p1.y.toInt())
         val endNode = Node(p2.x.toInt(), p2.y.toInt())
 
-        val path = algorithm.findPath(startNode, endNode, speedMs = 0L) {  }
+        val path = algorithm.findPath(startNode, endNode, speedMs = 0L) { }
 
         return path?.lastOrNull()?.currentCost ?: Double.POSITIVE_INFINITY
     }

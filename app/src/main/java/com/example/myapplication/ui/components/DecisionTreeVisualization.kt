@@ -30,8 +30,11 @@ fun DecisionTreeVisual(
                 modifier = modifier.padding(start = pad, top = 4.dp, bottom = 4.dp)
             )
         }
+
         is DecisionTreeNode.Internal -> {
-            Column(modifier = modifier.padding(start = pad).fillMaxWidth()) {
+            Column(modifier = modifier
+                .padding(start = pad)
+                .fillMaxWidth()) {
                 Text(
                     text = uiFeatureTitle(node.attribute),
                     style = MaterialTheme.typography.bodyMedium,

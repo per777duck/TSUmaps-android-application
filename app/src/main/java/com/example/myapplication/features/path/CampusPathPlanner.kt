@@ -1,5 +1,6 @@
 package com.example.myapplication.features.path
 
+import androidx.compose.ui.geometry.Offset
 import com.example.myapplication.algorithms.routes.AStarAlgorithm
 import com.example.myapplication.algorithms.routes.Node
 import com.example.myapplication.data.map.MapData
@@ -8,7 +9,6 @@ import com.example.myapplication.data.venues.CAMPUS_MAP_HEIGHT_PX
 import com.example.myapplication.data.venues.CAMPUS_MAP_WIDTH_PX
 import com.example.myapplication.data.venues.CAMPUS_WIDTH_KM
 import com.example.myapplication.data.venues.FoodVenue
-import androidx.compose.ui.geometry.Offset
 import kotlin.math.hypot
 
 data class CampusRoutingContext(
@@ -108,15 +108,19 @@ object CampusPathPlanner {
     fun serviceMinutesPerStop(): Int = SERVICE_MINUTES_PER_STOP
 
     private fun offsetToNearestWalkableNode(mapData: MapData, offset: Offset): Node {
-        val gx = (offset.x / CAMPUS_MAP_WIDTH_PX * mapData.width).toInt().coerceIn(0, mapData.width - 1)
-        val gy = (offset.y / CAMPUS_MAP_HEIGHT_PX * mapData.length).toInt().coerceIn(0, mapData.length - 1)
+        val gx =
+            (offset.x / CAMPUS_MAP_WIDTH_PX * mapData.width).toInt().coerceIn(0, mapData.width - 1)
+        val gy = (offset.y / CAMPUS_MAP_HEIGHT_PX * mapData.length).toInt()
+            .coerceIn(0, mapData.length - 1)
         val n = findNearestWalkable(mapData, gx, gy)
         return n ?: Node(gx, gy)
     }
 
     private fun snapOffsetToWalkable(mapData: MapData, offset: Offset): Offset {
-        val gx = (offset.x / CAMPUS_MAP_WIDTH_PX * mapData.width).toInt().coerceIn(0, mapData.width - 1)
-        val gy = (offset.y / CAMPUS_MAP_HEIGHT_PX * mapData.length).toInt().coerceIn(0, mapData.length - 1)
+        val gx =
+            (offset.x / CAMPUS_MAP_WIDTH_PX * mapData.width).toInt().coerceIn(0, mapData.width - 1)
+        val gy = (offset.y / CAMPUS_MAP_HEIGHT_PX * mapData.length).toInt()
+            .coerceIn(0, mapData.length - 1)
         val n = findNearestWalkable(mapData, gx, gy) ?: return offset
         return nodeToMapOffset(mapData, n)
     }
