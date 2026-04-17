@@ -275,6 +275,7 @@ fun AlgorithmCard(
             )
 
             AlgorithmTab.Genetic -> GeneticMealRouteScreen(mapData = mapData)
+            AlgorithmTab.NeuralNet -> NeuralCanvas()
             AlgorithmTab.DecisionTree -> DecisionTreeScreen(
                 onOpenPlaceOnMap = onOpenRecommendedPlaceOnMap
             )
