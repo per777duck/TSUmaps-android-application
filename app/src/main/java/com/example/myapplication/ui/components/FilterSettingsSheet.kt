@@ -25,11 +25,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.myapplication.R
 import com.example.myapplication.data.venues.MetricType
 import com.example.myapplication.data.venues.VenueType
-import com.example.myapplication.ui.TGU_Blue
-import com.example.myapplication.ui.TGU_Gold
 import com.example.myapplication.features.clustering.ClusterAlgorithmType
 
 val ClusterColors = listOf(
@@ -73,15 +73,15 @@ fun FilterSettingsContent(
             .padding(bottom = 32.dp)
             .verticalScroll(scrollState)
     ) {
-        Text("Настройки кластеризации", style = MaterialTheme.typography.headlineSmall, color = TGU_Blue)
+        Text(stringResource(R.string.cluster_settings_title), style = MaterialTheme.typography.headlineSmall, color = TGU_Blue)
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Тип заведений:", style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.cluster_venue_type), style = MaterialTheme.typography.labelLarge)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
                 selected = selectedType == null,
                 onClick = { onVenueTypeChange(null) },
-                label = { Text("Все") }
+                label = { Text(stringResource(R.string.cluster_all)) }
             )
             VenueType.entries.forEach { type ->
                 FilterChip(
@@ -89,9 +89,9 @@ fun FilterSettingsContent(
                     onClick = { onVenueTypeChange(type) },
                     label = {
                         when (type) {
-                            VenueType.FOOD -> Text("Поесть")
-                            VenueType.COWORKING -> Text("Рабочая зона")
-                            VenueType.SIGHTSEEING -> Text("Достопримечательности")
+                            VenueType.FOOD -> Text(stringResource(R.string.cluster_type_food))
+                            VenueType.COWORKING -> Text(stringResource(R.string.cluster_type_coworking))
+                            VenueType.SIGHTSEEING -> Text(stringResource(R.string.cluster_type_sightseeing))
                         }
                     }
                 )
@@ -100,7 +100,7 @@ fun FilterSettingsContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Метрика расстояния:", style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.cluster_metric_title), style = MaterialTheme.typography.labelLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricType.entries.forEach { metric ->
                 FilterChip(
@@ -108,8 +108,8 @@ fun FilterSettingsContent(
                     onClick = { onMetricChange(metric) },
                     label = {
                         when (metric) {
-                            MetricType.EUCLIDEAN -> Text("По прямой")
-                            MetricType.ASTAR -> Text("По дорожам")
+                            MetricType.EUCLIDEAN -> Text(stringResource(R.string.cluster_metric_direct))
+                            MetricType.ASTAR -> Text(stringResource(R.string.cluster_metric_astar))
                         }
                     }
                 )
@@ -120,7 +120,7 @@ fun FilterSettingsContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Алгоритм кластеризации:", style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.cluster_algorithm_title), style = MaterialTheme.typography.labelLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ClusterAlgorithmType.entries.forEach { algorithm ->
                 FilterChip(
@@ -128,8 +128,8 @@ fun FilterSettingsContent(
                     onClick = { onAlgorithmChange(algorithm) },
                     label = {
                         when (algorithm) {
-                            ClusterAlgorithmType.KMEANS -> Text("K-means")
-                            ClusterAlgorithmType.DBSCAN -> Text("DBSCAN")
+                            ClusterAlgorithmType.KMEANS -> Text(stringResource(R.string.cluster_algorithm_kmeans))
+                            ClusterAlgorithmType.DBSCAN -> Text(stringResource(R.string.cluster_algorithm_dbscan))
                         }
                     }
                 )
@@ -139,7 +139,7 @@ fun FilterSettingsContent(
         Spacer(modifier = Modifier.height(8.dp))
 
         if (selectedAlgorithm == ClusterAlgorithmType.KMEANS) {
-            Text("Количество кластеров: $clusterCount", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.cluster_count_format, clusterCount), style = MaterialTheme.typography.labelLarge)
             Slider(
                 value = clusterCount.toFloat(),
                 onValueChange = { onClusterCountChange(it.toInt().coerceIn(2, 10)) },
@@ -148,7 +148,7 @@ fun FilterSettingsContent(
             )
         } else {
             Text(
-                "DBSCAN использует фиксированные параметры плотности.",
+                stringResource(R.string.cluster_dbscan_density_note),
                 style = MaterialTheme.typography.bodyMedium
             )
         }
@@ -164,7 +164,13 @@ fun FilterSettingsContent(
         ) {
             Icon(Icons.Default.Compare, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(if (isComparisonMode) "Выключить сравнение" else "Сравнить Евклид vs A*")
+            Text(
+                if (isComparisonMode) {
+                    stringResource(R.string.cluster_disable_compare)
+                } else {
+                    stringResource(R.string.cluster_enable_compare)
+                }
+            )
         }
     }
 }

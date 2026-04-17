@@ -1,4 +1,4 @@
-package com.example.myapplication.ui
+package com.example.myapplication.ui.components
 
 import android.view.animation.Interpolator
 import android.view.animation.OvershootInterpolator
@@ -49,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -58,9 +59,12 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.annotation.StringRes
 import com.example.myapplication.R
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.map.MapMatrixLoader
@@ -69,9 +73,13 @@ import com.example.myapplication.data.venues.VenueType
 import com.example.myapplication.data.venues.listOfVenues
 import com.example.myapplication.ui.screens.AntsScreen
 import com.example.myapplication.ui.screens.ClusteringScreen
+import com.example.myapplication.ui.screens.DecisionTreeScreen
+import com.example.myapplication.ui.screens.GeneticMealRouteScreen
 import com.example.myapplication.ui.screens.NavigatorScreen
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun AppNavigation() {
@@ -84,27 +92,39 @@ fun AppNavigation() {
     }
 }
 
-enum class AlgorithmTab(val title: String, val icon: ImageVector) {
-    Navigation("A*", Icons.Default.LocationOn),
-    Clustering("Кластеры", Icons.Default.GridView),
-    Genetic("Генетика", Icons.Default.SwapCalls),
-    Ants("Муравьи", Icons.Default.BugReport),
-    DecisionTree("Дерево", Icons.Default.AccountTree),
-    NeuralNet("Нейро", Icons.Default.Edit)
+enum class AlgorithmTab(@StringRes val titleRes: Int, val icon: ImageVector) {
+    Navigation(R.string.tab_navigation, Icons.Default.LocationOn),
+    Clustering(R.string.tab_clustering, Icons.Default.GridView),
+    Genetic(R.string.tab_genetic, Icons.Default.SwapCalls),
+    Ants(R.string.tab_ants, Icons.Default.BugReport),
+    DecisionTree(R.string.tab_decision_tree, Icons.Default.AccountTree),
+    NeuralNet(R.string.tab_neural_net, Icons.Default.Edit)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreenWithNavigation() {
     var selectedTab by remember { mutableStateOf(AlgorithmTab.Navigation) }
+    var pendingVenueOnMap by remember { mutableStateOf<Offset?>(null) }
     var isComparisonMode by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf<VenueType?>(null) }
     var selectedMetric by remember { mutableStateOf(MetricType.EUCLIDEAN) }
     var clusterCount by remember { mutableStateOf(2) }
 
     val context = LocalContext.current
-    val mapData = remember {
-        MapMatrixLoader(context).mapToMatrix(R.drawable.map_mask)
+    var mapData by remember { mutableStateOf<MapData?>(null) }
+    var mapLoadingFailed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(context) {
+        mapLoadingFailed = false
+        mapData = runCatching {
+            withContext(Dispatchers.Default) {
+                MapMatrixLoader(context).mapToMatrix(R.drawable.map_mask)
+            }
+        }.getOrElse {
+            mapLoadingFailed = true
+            null
+        }
     }
 
     Scaffold(
@@ -114,11 +134,12 @@ fun MainScreenWithNavigation() {
                 tonalElevation = 8.dp
             ) {
                 AlgorithmTab.entries.forEach { tab ->
+                    val tabTitle = stringResource(tab.titleRes)
                     NavigationBarItem(
                         selected = selectedTab == tab,
                         onClick = { selectedTab = tab },
-                        icon = { Icon(tab.icon, contentDescription = tab.title) },
-                        label = { Text(tab.title, fontSize = 9.sp) },
+                        icon = { Icon(tab.icon, contentDescription = tabTitle) },
+                        label = { Text(tabTitle, fontSize = 10.sp, maxLines = 1) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = TGU_Blue,
                             indicatorColor = TGU_Gold.copy(alpha = 0.2f)
@@ -131,39 +152,79 @@ fun MainScreenWithNavigation() {
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             CenterAlignedTopAppBar(
                 title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.tgu_logo),
-                            contentDescription = "TGU logo",
-                            modifier = Modifier.size(28.dp)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.tgu_logo),
+                                contentDescription = stringResource(R.string.content_desc_tgu_logo_en),
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Text(stringResource(R.string.main_title), fontWeight = FontWeight.Bold, color = TGU_Blue)
+                        }
+                        Text(
+                            stringResource(R.string.main_subtitle),
+                            fontSize = 11.sp,
+                            color = Color(0xFF5C6B7A),
+                            fontWeight = FontWeight.Normal,
+                            modifier = Modifier.padding(top = 2.dp)
                         )
-                        Text("Навигатор ТГУ", fontWeight = FontWeight.Bold, color = TGU_Blue)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
             )
 
             Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                when (selectedTab) {
-                    AlgorithmTab.Navigation -> NavigatorScreen(mapData)
-                    AlgorithmTab.Clustering -> {
-                        AlgorithmCard(
-                            tab = selectedTab,
-                            venueType = selectedType,
-                            metricType = selectedMetric,
-                            clusterCount = clusterCount,
-                            isComparisonMode = isComparisonMode,
-                            mapData = mapData,
-                            onVenueTypeChange = { selectedType = it },
-                            onMetricChange = { selectedMetric = it },
-                            onClusterCountChange = { clusterCount = it },
-                            onComparisonModeChange = { isComparisonMode = it }
+                val loadedMapData = mapData
+                if (loadedMapData == null) {
+                    val loadingText = if (mapLoadingFailed) {
+                        stringResource(R.string.map_load_failed)
+                    } else {
+                        stringResource(R.string.map_loading)
+                    }
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = loadingText,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (mapLoadingFailed) Color(0xFFB00020) else Color(0xFF5C6B7A),
+                            textAlign = TextAlign.Center
                         )
                     }
-                    else -> AlgorithmCard(selectedTab, mapData = mapData)
+                } else {
+                    when (selectedTab) {
+                        AlgorithmTab.Navigation -> NavigatorScreen(
+                            mapData = loadedMapData,
+                            venueFocusMapPosition = pendingVenueOnMap,
+                            onVenueFocusHandled = { pendingVenueOnMap = null }
+                        )
+                        AlgorithmTab.Clustering -> {
+                            AlgorithmCard(
+                                tab = selectedTab,
+                                venueType = selectedType,
+                                metricType = selectedMetric,
+                                clusterCount = clusterCount,
+                                isComparisonMode = isComparisonMode,
+                                mapData = loadedMapData,
+                                onVenueTypeChange = { selectedType = it },
+                                onMetricChange = { selectedMetric = it },
+                                onClusterCountChange = { clusterCount = it },
+                                onComparisonModeChange = { isComparisonMode = it }
+                            )
+                        }
+                        else -> AlgorithmCard(
+                            selectedTab,
+                            mapData = loadedMapData,
+                            onOpenRecommendedPlaceOnMap = { offset ->
+                                pendingVenueOnMap = offset
+                                selectedTab = AlgorithmTab.Navigation
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -181,7 +242,8 @@ fun AlgorithmCard(
     onVenueTypeChange: (VenueType?) -> Unit = {},
     onMetricChange: (MetricType) -> Unit = {},
     onClusterCountChange: (Int) -> Unit = {},
-    onComparisonModeChange: (Boolean) -> Unit = {}
+    onComparisonModeChange: (Boolean) -> Unit = {},
+    onOpenRecommendedPlaceOnMap: (Offset) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxSize(),
@@ -189,8 +251,8 @@ fun AlgorithmCard(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        if (tab == AlgorithmTab.Clustering) {
-            ClusteringScreen(
+        when (tab) {
+            AlgorithmTab.Clustering -> ClusteringScreen(
                 venues = listOfVenues,
                 selectedType = venueType,
                 selectedMetric = metricType,
@@ -202,16 +264,18 @@ fun AlgorithmCard(
                 onClusterCountChange = onClusterCountChange,
                 onComparisonModeChange = onComparisonModeChange
             )
-        } else if (tab == AlgorithmTab.Ants) {
-            AntsScreen(mapData = mapData)
-        } else {
-            Column(
+            AlgorithmTab.Genetic -> GeneticMealRouteScreen(mapData = mapData)
+            AlgorithmTab.DecisionTree -> DecisionTreeScreen(
+                onOpenPlaceOnMap = onOpenRecommendedPlaceOnMap
+            )
+            else -> Column(
                 modifier = Modifier.padding(24.dp).fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(tab.title, style = MaterialTheme.typography.headlineSmall, color = TGU_Blue)
+                val tabTitle = stringResource(tab.titleRes)
+                Text(tabTitle, style = MaterialTheme.typography.headlineSmall, color = TGU_Blue)
                 Spacer(modifier = Modifier.height(20.dp))
-                Text("Интерфейс для алгоритма ${tab.title} будет здесь", color = Color.Gray)
+                Text(stringResource(R.string.algorithm_placeholder, tabTitle), color = Color.Gray)
             }
         }
     }
@@ -252,28 +316,50 @@ fun SplashScreen(onFinished: () -> Unit) {
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.White), contentAlignment = Alignment.Center) {
-        Box(
-            modifier = Modifier.size(300.dp).alpha(introAlpha.value).scale(introScale.value),
-            contentAlignment = Alignment.Center
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .padding(horizontal = 24.dp)
+                .alpha(introAlpha.value)
+                .scale(introScale.value)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.tgu_logo),
-                contentDescription = "Логотип ТГУ",
-                modifier = Modifier.size(130.dp)
-            )
-            Canvas(modifier = Modifier.size(230.dp)) {
-                rotate(baseRotation) {
-                    val sweep =
-                        if (headAngle >= tailAngle) headAngle - tailAngle else (360f - tailAngle) + headAngle
-                    drawArc(
-                        color = TGU_Blue,
-                        startAngle = tailAngle - 90f,
-                        sweepAngle = sweep.coerceAtLeast(8f),
-                        useCenter = false,
-                        style = Stroke(width = 12f, cap = StrokeCap.Round)
-                    )
+            Box(
+                modifier = Modifier.size(300.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.tgu_logo),
+                    contentDescription = stringResource(R.string.content_desc_tgu_logo),
+                    modifier = Modifier.size(130.dp)
+                )
+                Canvas(modifier = Modifier.size(230.dp)) {
+                    rotate(baseRotation) {
+                        val sweep =
+                            if (headAngle >= tailAngle) headAngle - tailAngle else (360f - tailAngle) + headAngle
+                        drawArc(
+                            color = TGU_Blue,
+                            startAngle = tailAngle - 90f,
+                            sweepAngle = sweep.coerceAtLeast(8f),
+                            useCenter = false,
+                            style = Stroke(width = 12f, cap = StrokeCap.Round)
+                        )
+                    }
                 }
             }
+            Spacer(modifier = Modifier.height(20.dp))
+            Text(
+                stringResource(R.string.splash_university_title),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TGU_Blue
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                stringResource(R.string.splash_subtitle),
+                fontSize = 13.sp,
+                color = Color(0xFF5C6B7A),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

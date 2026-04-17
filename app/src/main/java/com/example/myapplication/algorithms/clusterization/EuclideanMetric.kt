@@ -1,4 +1,4 @@
-package com.example.myapplication.algorithms.models
+package com.example.myapplication.algorithms.clusterization
 
 import kotlin.math.pow
 import kotlin.math.sqrt

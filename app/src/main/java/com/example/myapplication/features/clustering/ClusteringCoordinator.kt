@@ -1,12 +1,12 @@
 package com.example.myapplication.features.clustering
 
-import com.example.myapplication.algorithms.DBScan
-import com.example.myapplication.algorithms.KmeansAlgorithm
-import com.example.myapplication.algorithms.AStarAlgorithm
-import com.example.myapplication.algorithms.models.Cluster
-import com.example.myapplication.algorithms.models.AStarMetric
-import com.example.myapplication.algorithms.models.EuclideanMetric
-import com.example.myapplication.algorithms.models.Point
+import com.example.myapplication.algorithms.clusterization.DBScan
+import com.example.myapplication.algorithms.clusterization.KmeansAlgorithm
+import com.example.myapplication.algorithms.clusterization.Cluster
+import com.example.myapplication.algorithms.clusterization.AStarMetric
+import com.example.myapplication.algorithms.clusterization.EuclideanMetric
+import com.example.myapplication.algorithms.clusterization.Point
+import com.example.myapplication.algorithms.routes.AStarAlgorithm
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.venues.MetricType
 import com.example.myapplication.data.venues.Venue

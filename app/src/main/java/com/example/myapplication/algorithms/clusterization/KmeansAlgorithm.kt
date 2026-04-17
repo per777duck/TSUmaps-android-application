@@ -1,8 +1,5 @@
-package com.example.myapplication.algorithms
+package com.example.myapplication.algorithms.clusterization
 
-import com.example.myapplication.algorithms.models.IDistanceMetrics
-import com.example.myapplication.algorithms.models.Point
-import com.example.myapplication.algorithms.models.Cluster
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -15,17 +12,17 @@ class KmeansAlgorithm(
         newCentroids: List<Point>,
         epsilon: Double = 1e-6
     ): Boolean {
-        return oldCentroids.zip(newCentroids).all {(old, new) ->
+        return oldCentroids.zip(newCentroids).all { (old, new) ->
             val dist = sqrt((old.x - new.x).pow(2) + (old.y - new.y).pow(2))
             dist < epsilon
         }
     }
 
-    suspend fun run(points: List<Point>, metric: IDistanceMetrics): List<Cluster>{
+    suspend fun run(points: List<Point>, metric: IDistanceMetrics): List<Cluster> {
         var centroids = points.shuffled().take(k).map { Point(it.id, it.x, it.y) }
         val clusters = List(k) { ind -> Cluster(ind, centroids[ind]) }
 
-        repeat(maxIterations){
+        repeat(maxIterations) {
             clusters.forEach { it.points.clear() }
 
             points.forEach { point ->
@@ -33,7 +30,7 @@ class KmeansAlgorithm(
                 var bestClusterId = 0
                 clusters.forEachIndexed { index, cluster ->
                     val dist = metric.calculatingDistance(cluster.centroid, point)
-                    if (minDist > dist){
+                    if (minDist > dist) {
                         minDist = dist
                         bestClusterId = index
                     }
@@ -41,7 +38,7 @@ class KmeansAlgorithm(
                 clusters[bestClusterId].points.add(point)
             }
 
-            val newCentroids = clusters.map {cluster ->
+            val newCentroids = clusters.map { cluster ->
                 if (cluster.points.isEmpty()) {
                     return@map cluster.centroid
                 }

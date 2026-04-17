@@ -3,7 +3,6 @@ package com.example.myapplication.ui.screens
 import android.annotation.SuppressLint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,7 +25,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.myapplication.R
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.map.MapRendering.TguMapWrapper
 import com.example.myapplication.data.venues.MetricType
@@ -35,7 +36,7 @@ import com.example.myapplication.data.venues.VenueType
 import com.example.myapplication.features.clustering.ClusteringCoordinator
 import com.example.myapplication.ui.components.ClusterColors
 import com.example.myapplication.ui.components.FilterSettingsContent
-import com.example.myapplication.ui.TGU_Blue
+import com.example.myapplication.ui.components.TGU_Blue
 import com.example.myapplication.features.clustering.ClusterAlgorithmType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -167,7 +168,7 @@ fun ClusteringScreen(
             containerColor = TGU_Blue,
             contentColor = Color.White
         ) {
-            Icon(Icons.Default.FilterList, contentDescription = "Фильтры кластеризации")
+            Icon(Icons.Default.FilterList, contentDescription = stringResource(R.string.content_desc_cluster_filters))
         }
     }
 }

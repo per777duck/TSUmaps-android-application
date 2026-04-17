@@ -10,7 +10,9 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +21,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
@@ -42,36 +48,60 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.example.myapplication.algorithms.AStarAlgorithm
-import com.example.myapplication.algorithms.Node
+import com.example.myapplication.R
+import com.example.myapplication.algorithms.routes.AStarAlgorithm
+import com.example.myapplication.algorithms.routes.Node
 import com.example.myapplication.data.map.MapCoordinateTransformer
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.map.MapRendering
 import com.example.myapplication.features.path.StartNodeResolveStatus
 import com.example.myapplication.features.path.UserLocationStartResolver
-import com.example.myapplication.ui.TGU_Blue
+import com.example.myapplication.data.venues.CAMPUS_MAP_HEIGHT_PX
+import com.example.myapplication.data.venues.CAMPUS_MAP_WIDTH_PX
+import com.example.myapplication.ui.components.TGU_Blue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 @Composable
-fun NavigatorScreen(mapData: MapData) {
-    val context = LocalContext.current
+fun NavigatorScreen(
+    mapData: MapData,
+    venueFocusMapPosition: Offset? = null,
+    onVenueFocusHandled: () -> Unit = {}
+) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val statusChooseStart = stringResource(R.string.nav_status_choose_start)
+    val statusPlaceMarked = stringResource(R.string.nav_status_place_marked)
+    val statusStartSelectedEndSaved = stringResource(R.string.nav_status_start_selected_end_saved)
+    val statusChooseEnd = stringResource(R.string.nav_status_choose_end)
+    val statusCanBuild = stringResource(R.string.nav_status_can_build)
+    val statusStartUpdated = stringResource(R.string.nav_status_start_updated)
+    val statusSwapped = stringResource(R.string.nav_status_swapped)
+    val statusSelectStartFirst = stringResource(R.string.nav_status_select_start_first)
+    val statusSelectEndNow = stringResource(R.string.nav_status_select_end_now)
+    val statusSearching = stringResource(R.string.nav_status_searching)
+    val statusPathNotFound = stringResource(R.string.nav_status_path_not_found)
     var startNode by remember { mutableStateOf<Node?>(null) }
     var endNode by remember { mutableStateOf<Node?>(null) }
-    var statusText by remember { mutableStateOf("Определяем текущее местоположение...") }
+    var statusText by remember(statusChooseStart) { mutableStateOf(statusChooseStart) }
     var searchJob by remember { mutableStateOf<Job?>(null) }
     var isSearching by remember { mutableStateOf(false) }
 
@@ -82,63 +112,21 @@ fun NavigatorScreen(mapData: MapData) {
     var isControlPanelVisible by remember { mutableStateOf(false) }
 
     val algorithm = remember { AStarAlgorithm(mapData) }
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        if (!granted) {
-            statusText = "Геопозиция недоступна. Выберите начальную точку вручную"
-            return@rememberLauncherForActivityResult
-        }
 
-        scope.launch {
-            val result = withContext(Dispatchers.Default) {
-                UserLocationStartResolver.resolveStartNode(context, algorithm)
-            }
-            when (result.status) {
-                StartNodeResolveStatus.SUCCESS -> {
-                    startNode = result.node
-                    statusText = "Начальная точка определена автоматически, выберите конечную"
-                }
-                StartNodeResolveStatus.OUT_OF_MAP_BOUNDS -> {
-                    statusText = "Геопозиция вне карты. Выберите начальную точку вручную"
-                }
-                StartNodeResolveStatus.LOCATION_UNAVAILABLE,
-                StartNodeResolveStatus.PERMISSION_DENIED -> {
-                    statusText = "Геопозиция недоступна. Выберите начальную точку вручную"
-                }
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        if (!UserLocationStartResolver.hasLocationPermission(context)) {
-            locationPermissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
-            return@LaunchedEffect
-        }
-
-        val result = withContext(Dispatchers.Default) {
-            UserLocationStartResolver.resolveStartNode(context, algorithm)
-        }
-        when (result.status) {
-            StartNodeResolveStatus.SUCCESS -> {
-                startNode = result.node
-                statusText = "Начальная точка определена автоматически, выберите конечную"
-            }
-            StartNodeResolveStatus.OUT_OF_MAP_BOUNDS -> {
-                statusText = "Геопозиция вне карты. Выберите начальную точку вручную"
-            }
-            StartNodeResolveStatus.LOCATION_UNAVAILABLE,
-            StartNodeResolveStatus.PERMISSION_DENIED -> {
-                statusText = "Геопозиция недоступна. Выберите начальную точку вручную"
-            }
-        }
+    LaunchedEffect(venueFocusMapPosition) {
+        val pos = venueFocusMapPosition ?: return@LaunchedEffect
+        val node = mapPixelOffsetToWalkableNode(mapData, pos) ?: return@LaunchedEffect
+        searchJob?.cancel()
+        isSearching = false
+        startNode = null
+        endNode = node
+        currentPath = emptyList()
+        displayedPath = emptyList()
+        openNodes = emptyList()
+        closedNodes = emptyList()
+        statusText = statusPlaceMarked
+        isControlPanelVisible = true
+        onVenueFocusHandled()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -152,14 +140,25 @@ fun NavigatorScreen(mapData: MapData) {
             modifier = Modifier.fillMaxSize(),
             onMapClick = { node ->
                 if (isSearching) return@MapSection
-                val nearest = algorithm.nearestWalkable(node.x, node.y) ?: return@MapSection
-                if (startNode == null || endNode != null) {
-                    startNode = nearest
-                    endNode = null
-                    statusText = "Начальная точка выбрана, выберите конечную"
-                } else {
-                    endNode = nearest
-                    statusText = "Можно запускать поиск маршрута"
+                val nearest = findNearestWalkable(mapData, node.x, node.y) ?: return@MapSection
+                when {
+                    startNode == null -> {
+                        startNode = nearest
+                        statusText = if (endNode != null) {
+                            statusStartSelectedEndSaved
+                        } else {
+                            statusChooseEnd
+                        }
+                    }
+                    endNode == null -> {
+                        endNode = nearest
+                        statusText = statusCanBuild
+                    }
+                    else -> {
+                        // Keep focused destination; repeated tap updates only start point.
+                        startNode = nearest
+                        statusText = statusStartUpdated
+                    }
                 }
             }
         )
@@ -182,7 +181,7 @@ fun NavigatorScreen(mapData: MapData) {
                     displayedPath = emptyList()
                     openNodes = emptyList()
                     closedNodes = emptyList()
-                    statusText = "Выберите начальную точку"
+                    statusText = statusChooseStart
                 },
                 onSwapClick = {
                     if (!isSearching && startNode != null && endNode != null) {
@@ -191,23 +190,23 @@ fun NavigatorScreen(mapData: MapData) {
                         endNode = tmp
                         displayedPath = emptyList()
                         currentPath = emptyList()
-                        statusText = "Точки поменяны местами"
+                        statusText = statusSwapped
                     }
                 },
                 onBuildClick = {
                     if (isSearching) return@InputSection
                     val start = startNode ?: run {
-                        statusText = "Сначала выберите начальную точку"
+                        statusText = statusSelectStartFirst
                         return@InputSection
                     }
                     val end = endNode ?: run {
-                        statusText = "Теперь выберите конечную точку"
+                        statusText = statusSelectEndNow
                         return@InputSection
                     }
 
                     searchJob?.cancel()
                     isSearching = true
-                    statusText = "Идёт поиск маршрута..."
+                    statusText = statusSearching
                     currentPath = emptyList()
                     displayedPath = emptyList()
                     openNodes = emptyList()
@@ -236,9 +235,9 @@ fun NavigatorScreen(mapData: MapData) {
                                                 displayedPath = currentPath.take(i)
                                                 delay(8L)
                                             }
-                                            statusText = "Путь найден: ${currentPath.size} точек"
+                                            statusText = context.getString(R.string.nav_status_path_found, currentPath.size)
                                         } else {
-                                            statusText = "Путь не найден или превышен лимит 10 сек"
+                                            statusText = statusPathNotFound
                                         }
                                         isSearching = false
                                     }
@@ -258,7 +257,7 @@ fun NavigatorScreen(mapData: MapData) {
             containerColor = TGU_Blue,
             contentColor = Color.White
         ) {
-            Icon(Icons.Default.Tune, contentDescription = "Панель навигации")
+            Icon(Icons.Default.Tune, contentDescription = stringResource(R.string.content_desc_nav_panel))
         }
     }
 }
@@ -371,6 +370,18 @@ fun InputSection(
     onSwapClick: () -> Unit,
     onBuildClick: () -> Unit
 ) {
+    val notSelected = stringResource(R.string.nav_coord_not_selected)
+    val coordA = startNode?.let { "${it.x},${it.y}" } ?: notSelected
+    val coordB = endNode?.let { "${it.x},${it.y}" } ?: notSelected
+    var contentOffsetY by remember { mutableStateOf(0f) }
+    var viewportHeightPx by remember { mutableStateOf(0f) }
+    var contentHeightPx by remember { mutableStateOf(0f) }
+    val density = LocalDensity.current
+    val extraScrollLimitPx = with(density) { 40.dp.toPx() }
+    val overflowPx = (contentHeightPx - viewportHeightPx).coerceAtLeast(0f)
+    val minOffset = -(overflowPx + extraScrollLimitPx)
+    val maxOffset = extraScrollLimitPx
+
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
@@ -378,48 +389,144 @@ fun InputSection(
         colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.96f))
     ) {
         Column(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
-            Text("Навигация по карте", style = MaterialTheme.typography.titleMedium)
-            Text(
-                statusText,
-                color = TGU_Blue,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth().height(22.dp)
-            )
-            Text("A: ${startNode?.let { "${it.x},${it.y}" } ?: "не выбрано"}")
-            Text("B: ${endNode?.let { "${it.x},${it.y}" } ?: "не выбрано"}")
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 232.dp)
+                    .clipToBounds()
+                    .onSizeChanged {
+                        viewportHeightPx = it.height.toFloat()
+                        contentOffsetY = contentOffsetY.coerceIn(minOffset, maxOffset)
+                    }
+                    .pointerInput(minOffset, maxOffset) {
+                        detectVerticalDragGestures { change, dragAmount ->
+                            change.consume()
+                            contentOffsetY =
+                                (contentOffsetY + dragAmount).coerceIn(minOffset, maxOffset)
+                        }
+                    }
             ) {
-                OutlinedButton(
-                    onClick = onResetClick,
-                    enabled = !isSearching,
-                    modifier = Modifier.weight(1f).height(46.dp)
-                ) { Text("Сброс") }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onSizeChanged {
+                            contentHeightPx = it.height.toFloat()
+                            contentOffsetY = contentOffsetY.coerceIn(minOffset, maxOffset)
+                        }
+                        .offset { IntOffset(0, contentOffsetY.roundToInt()) },
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        stringResource(R.string.nav_panel_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        statusText,
+                        color = TGU_Blue,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(22.dp)
+                    )
+                    Text(stringResource(R.string.nav_coord_format, coordA))
+                    Text(stringResource(R.string.nav_coord_b_format, coordB))
+                    Text(
+                        stringResource(R.string.nav_legend_text),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        LegendItem(Color(0xFFFF1744), stringResource(R.string.nav_legend_start))
+                        LegendItem(Color(0xFF2979FF), stringResource(R.string.nav_legend_end))
+                        LegendItem(Color.Red, stringResource(R.string.nav_legend_path))
+                    }
 
-                OutlinedButton(
-                    onClick = onSwapClick,
-                    enabled = !isSearching && startNode != null && endNode != null,
-                    modifier = Modifier.weight(1f).height(46.dp)
-                ) { Text("A ↔ B") }
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onResetClick,
+                            enabled = !isSearching,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                        ) { Text(stringResource(R.string.common_reset)) }
+
+                        OutlinedButton(
+                            onClick = onSwapClick,
+                            enabled = !isSearching && startNode != null && endNode != null,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                        ) { Text(stringResource(R.string.common_swap_ab)) }
+                    }
+                }
             }
-
+            Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = onBuildClick,
                 enabled = !isSearching,
-                modifier = Modifier.fillMaxWidth().height(48.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = TGU_Blue)
             ) {
-                Text(if (isSearching) "ПОИСК..." else "ПОСТРОИТЬ ПУТЬ", color = Color.White)
+                Text(
+                    if (isSearching) stringResource(R.string.common_searching_upper) else stringResource(R.string.common_build_route_upper),
+                    color = Color.White
+                )
             }
         }
     }
+}
+
+@Composable
+private fun LegendItem(color: Color, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Text(text, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+private fun mapPixelOffsetToWalkableNode(mapData: MapData, offset: Offset): Node? {
+    val gx = (offset.x / CAMPUS_MAP_WIDTH_PX * mapData.width).toInt().coerceIn(0, mapData.width - 1)
+    val gy = (offset.y / CAMPUS_MAP_HEIGHT_PX * mapData.length).toInt().coerceIn(0, mapData.length - 1)
+    return findNearestWalkable(mapData, gx, gy)
+}
+
+private fun findNearestWalkable(mapData: MapData, x: Int, y: Int): Node? {
+    if (mapData.width == 0 || mapData.length == 0) return null
+    val clampedX = x.coerceIn(0, mapData.width - 1)
+    val clampedY = y.coerceIn(0, mapData.length - 1)
+    if (mapData.isAvailable(clampedX, clampedY)) return Node(clampedX, clampedY)
+
+    val maxRadius = maxOf(mapData.width, mapData.length)
+    for (radius in 1..maxRadius) {
+        for (dy in -radius..radius) {
+            for (dx in -radius..radius) {
+                val nx = clampedX + dx
+                val ny = clampedY + dy
+                if (nx !in 0 until mapData.width || ny !in 0 until mapData.length) continue
+                if (mapData.isAvailable(nx, ny)) return Node(nx, ny)
+            }
+        }
+    }
+    return null
 }
