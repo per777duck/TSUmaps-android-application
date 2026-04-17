@@ -26,6 +26,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +40,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.R
+import com.example.myapplication.algorithms.neural.DigitRecognizer
 import com.example.myapplication.data.venues.FoodVenue
 import com.example.myapplication.data.venues.Venue
 import com.example.myapplication.data.venues.foodVenues
@@ -51,7 +53,8 @@ private const val TotalPixels = GridSize * GridSize
 
 private data class PlaceOption(
     val key: String,
-    val title: String
+    val title: String,
+    val assignRating: (Int) -> Unit
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,7 +70,8 @@ fun NeuralCanvas(
                 add(
                     PlaceOption(
                         key = "food-${venue.id}",
-                        title = venue.name
+                        title = venue.name,
+                        assignRating = { rating -> venue.userRating = rating }
                     )
                 )
             }
@@ -75,7 +79,8 @@ fun NeuralCanvas(
                 add(
                     PlaceOption(
                         key = "venue-${venue.id}",
-                        title = venue.name
+                        title = venue.name,
+                        assignRating = { rating -> venue.userRating = rating }
                     )
                 )
             }
@@ -86,7 +91,16 @@ fun NeuralCanvas(
     var isMenuExpanded by remember { mutableStateOf(false) }
     var pixels by remember { mutableStateOf(List(TotalPixels) { false }) }
     var toggledInGesture by remember { mutableStateOf(emptySet<Int>()) }
-    val recognizedDigitPlaceholder = stringResource(R.string.neural_recognized_digit_placeholder)
+    val digitRecognizer = remember { DigitRecognizer() }
+    val prediction = remember(pixels) { digitRecognizer.predict(pixels) }
+    val recognizedDigitText =
+        prediction?.digit?.toString() ?: stringResource(R.string.neural_recognized_digit_placeholder)
+
+    LaunchedEffect(selectedPlace?.key, prediction?.digit) {
+        prediction?.digit?.let { digit ->
+            selectedPlace?.assignRating?.invoke(digit)
+        }
+    }
 
     fun indexFromOffset(touch: Offset, sizePx: Float): Int? {
         if (sizePx <= 0f) return null
@@ -158,7 +172,7 @@ fun NeuralCanvas(
                         color = Color(0xFF5C6B7A)
                     )
                     Text(
-                        text = recognizedDigitPlaceholder,
+                        text = recognizedDigitText,
                         style = MaterialTheme.typography.titleLarge,
                         color = TGU_Blue
                     )
