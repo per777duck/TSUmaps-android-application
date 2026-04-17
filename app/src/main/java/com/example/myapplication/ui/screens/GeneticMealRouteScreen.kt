@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.screens
 
+import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -90,7 +92,7 @@ fun GeneticMealRouteScreen(mapData: MapData) {
     var finalResult by remember { mutableStateOf<GeneticMealRouteResult?>(null) }
     var statusText by remember { mutableStateOf("Откройте фильтр, выберите блюда и постройте путь") }
     var runningJob by remember { mutableStateOf<Job?>(null) }
-    var pathPolyline by remember { mutableStateOf<List<Offset>>(emptyList()) }
+    var pathSegments by remember { mutableStateOf<List<List<Offset>>>(emptyList()) }
 
     val displayedRoute = finalResult?.route ?: progressUpdate?.route.orEmpty()
     val displayedMissing = finalResult?.missingItems ?: progressUpdate?.missingItems.orEmpty()
@@ -101,20 +103,31 @@ fun GeneticMealRouteScreen(mapData: MapData) {
 
     LaunchedEffect(displayedRoute, routing, mapData) {
         if (displayedRoute.isEmpty()) {
-            pathPolyline = emptyList()
+            pathSegments = emptyList()
             return@LaunchedEffect
         }
-        val ids = displayedRoute.map { it.venue.id }
-        val poly = withContext(Dispatchers.Default) {
-            CampusPathPlanner.buildFullPathPolyline(
-                mapData = mapData,
-                algorithm = astar,
-                orderedVenueIds = ids,
-                context = routing
-            )
+        val segments = withContext(Dispatchers.Default) {
+            val built = mutableListOf<List<Offset>>()
+            var current = routing.startNode
+            displayedRoute.forEach { stop ->
+                val target = routing.venueNodes[stop.venue.id] ?: return@forEach
+                val segment = astar.findPathSync(current, target)
+                val points = if (segment != null && segment.isNotEmpty()) {
+                    segment.map { node -> CampusPathPlanner.nodeToMapOffset(mapData, node) }
+                } else {
+                    listOf(routing.venueDisplayOffsets[stop.venue.id] ?: stop.venue.mapPosition)
+                }
+                if (points.size >= 2) {
+                    built += points
+                }
+                current = target
+            }
+            built
         }
-        pathPolyline = poly
+        pathSegments = segments
     }
+
+    val legendText = "Легенда: жёлтая точка — старт, синие круги с цифрами — остановки, цветные линии — переходы между остановками."
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -130,7 +143,6 @@ fun GeneticMealRouteScreen(mapData: MapData) {
                 color = TGU_Blue,
                 fontWeight = FontWeight.SemiBold
             )
-
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -140,10 +152,11 @@ fun GeneticMealRouteScreen(mapData: MapData) {
                 GeneticRouteMap(
                     mapData = mapData,
                     route = displayedRoute,
-                    pathPolyline = pathPolyline,
+                    pathSegments = pathSegments,
                     routing = routing
                 )
             }
+            Text(legendText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             Text(statusText, color = TGU_Blue)
 
@@ -216,7 +229,7 @@ fun GeneticMealRouteScreen(mapData: MapData) {
                     statusText = "Идет поиск маршрута..."
                     progressUpdate = null
                     finalResult = null
-                    pathPolyline = emptyList()
+                    pathSegments = emptyList()
                     showFilterSheet = false
 
                     val calendar = Calendar.getInstance()
@@ -251,7 +264,7 @@ fun GeneticMealRouteScreen(mapData: MapData) {
                     isRunning = false
                     progressUpdate = null
                     finalResult = null
-                    pathPolyline = emptyList()
+                    pathSegments = emptyList()
                     statusText = "Состояние очищено"
                     showFilterSheet = false
                 }
@@ -264,23 +277,33 @@ fun GeneticMealRouteScreen(mapData: MapData) {
 private fun GeneticRouteMap(
     mapData: MapData,
     route: List<RouteStop>,
-    pathPolyline: List<Offset>,
+    pathSegments: List<List<Offset>>,
     routing: CampusRoutingContext
 ) {
+    val legColors = listOf(
+        Color(0xFFE53935),
+        Color(0xFF1E88E5),
+        Color(0xFF43A047),
+        Color(0xFFF4511E),
+        Color(0xFF8E24AA),
+        Color(0xFF00897B)
+    )
+
     MapRendering.TguMapWrapper(
         mapData = mapData,
         modifier = Modifier.fillMaxSize(),
     ) { currentScale, _, _ ->
         Canvas(modifier = Modifier.fillMaxSize()) {
-            if (pathPolyline.size >= 2) {
+            pathSegments.forEachIndexed { index, segment ->
+                if (segment.size < 2) return@forEachIndexed
                 val path = Path().apply {
-                    moveTo(pathPolyline.first().x, pathPolyline.first().y)
-                    pathPolyline.drop(1).forEach { point -> lineTo(point.x, point.y) }
+                    moveTo(segment.first().x, segment.first().y)
+                    segment.drop(1).forEach { point -> lineTo(point.x, point.y) }
                 }
                 drawPath(
                     path = path,
-                    color = Color(0xFFEF5350),
-                    style = Stroke(width = (7f / currentScale).coerceAtLeast(1.5f))
+                    color = legColors[index % legColors.size],
+                    style = Stroke(width = (6f / currentScale).coerceAtLeast(1.6f))
                 )
             }
 
@@ -290,12 +313,30 @@ private fun GeneticRouteMap(
                 center = routing.startDisplayOffset
             )
 
-            route.forEach { stop ->
+            val labelPaint = Paint().apply {
+                color = android.graphics.Color.WHITE
+                isFakeBoldText = true
+                textAlign = Paint.Align.CENTER
+                textSize = (11f / currentScale).coerceAtLeast(7f)
+            }
+
+            route.forEachIndexed { idx, stop ->
                 val center = routing.venueDisplayOffsets[stop.venue.id] ?: stop.venue.mapPosition
                 drawCircle(
-                    color = TGU_Blue,
-                    radius = (9f / currentScale).coerceAtLeast(2.5f),
+                    color = Color.White,
+                    radius = (10f / currentScale).coerceAtLeast(3f),
                     center = center
+                )
+                drawCircle(
+                    color = TGU_Blue,
+                    radius = (8.5f / currentScale).coerceAtLeast(2.5f),
+                    center = center
+                )
+                drawContext.canvas.nativeCanvas.drawText(
+                    (idx + 1).toString(),
+                    center.x,
+                    center.y + (3f / currentScale).coerceAtLeast(1.2f),
+                    labelPaint
                 )
             }
         }

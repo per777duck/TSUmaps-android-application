@@ -49,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -59,6 +60,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.R
@@ -68,6 +70,8 @@ import com.example.myapplication.data.venues.MetricType
 import com.example.myapplication.data.venues.VenueType
 import com.example.myapplication.data.venues.listOfVenues
 import com.example.myapplication.ui.screens.ClusteringScreen
+import com.example.myapplication.ui.screens.DecisionTreeScreen
+import com.example.myapplication.ui.screens.GeneticMealRouteScreen
 import com.example.myapplication.ui.screens.NavigatorScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -84,11 +88,11 @@ fun AppNavigation() {
 }
 
 enum class AlgorithmTab(val title: String, val icon: ImageVector) {
-    Navigation("A*", Icons.Default.LocationOn),
+    Navigation("Карта", Icons.Default.LocationOn),
     Clustering("Кластеры", Icons.Default.GridView),
     Genetic("Генетика", Icons.Default.SwapCalls),
     Ants("Муравьи", Icons.Default.BugReport),
-    DecisionTree("Дерево", Icons.Default.AccountTree),
+    DecisionTree("Обед", Icons.Default.AccountTree),
     NeuralNet("Нейро", Icons.Default.Edit)
 }
 
@@ -96,6 +100,7 @@ enum class AlgorithmTab(val title: String, val icon: ImageVector) {
 @Composable
 fun MainScreenWithNavigation() {
     var selectedTab by remember { mutableStateOf(AlgorithmTab.Navigation) }
+    var pendingVenueOnMap by remember { mutableStateOf<Offset?>(null) }
     var isComparisonMode by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf<VenueType?>(null) }
     var selectedMetric by remember { mutableStateOf(MetricType.EUCLIDEAN) }
@@ -117,7 +122,7 @@ fun MainScreenWithNavigation() {
                         selected = selectedTab == tab,
                         onClick = { selectedTab = tab },
                         icon = { Icon(tab.icon, contentDescription = tab.title) },
-                        label = { Text(tab.title, fontSize = 9.sp) },
+                        label = { Text(tab.title, fontSize = 10.sp, maxLines = 1) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = TGU_Blue,
                             indicatorColor = TGU_Gold.copy(alpha = 0.2f)
@@ -130,16 +135,25 @@ fun MainScreenWithNavigation() {
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             CenterAlignedTopAppBar(
                 title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.tgu_logo),
-                            contentDescription = "TGU logo",
-                            modifier = Modifier.size(28.dp)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.tgu_logo),
+                                contentDescription = "TGU logo",
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Text("Навигатор ТГУ", fontWeight = FontWeight.Bold, color = TGU_Blue)
+                        }
+                        Text(
+                            "Карта кампуса · маршруты · алгоритмы",
+                            fontSize = 11.sp,
+                            color = Color(0xFF5C6B7A),
+                            fontWeight = FontWeight.Normal,
+                            modifier = Modifier.padding(top = 2.dp)
                         )
-                        Text("Навигатор ТГУ", fontWeight = FontWeight.Bold, color = TGU_Blue)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
@@ -147,7 +161,11 @@ fun MainScreenWithNavigation() {
 
             Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                 when (selectedTab) {
-                    AlgorithmTab.Navigation -> NavigatorScreen(mapData)
+                    AlgorithmTab.Navigation -> NavigatorScreen(
+                        mapData = mapData,
+                        venueFocusMapPosition = pendingVenueOnMap,
+                        onVenueFocusHandled = { pendingVenueOnMap = null }
+                    )
                     AlgorithmTab.Clustering -> {
                         AlgorithmCard(
                             tab = selectedTab,
@@ -162,7 +180,14 @@ fun MainScreenWithNavigation() {
                             onComparisonModeChange = { isComparisonMode = it }
                         )
                     }
-                    else -> AlgorithmCard(selectedTab, mapData = mapData)
+                    else -> AlgorithmCard(
+                        selectedTab,
+                        mapData = mapData,
+                        onOpenRecommendedPlaceOnMap = { offset ->
+                            pendingVenueOnMap = offset
+                            selectedTab = AlgorithmTab.Navigation
+                        }
+                    )
                 }
             }
         }
@@ -180,7 +205,8 @@ fun AlgorithmCard(
     onVenueTypeChange: (VenueType?) -> Unit = {},
     onMetricChange: (MetricType) -> Unit = {},
     onClusterCountChange: (Int) -> Unit = {},
-    onComparisonModeChange: (Boolean) -> Unit = {}
+    onComparisonModeChange: (Boolean) -> Unit = {},
+    onOpenRecommendedPlaceOnMap: (Offset) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxSize(),
@@ -188,8 +214,8 @@ fun AlgorithmCard(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        if (tab == AlgorithmTab.Clustering) {
-            ClusteringScreen(
+        when (tab) {
+            AlgorithmTab.Clustering -> ClusteringScreen(
                 venues = listOfVenues,
                 selectedType = venueType,
                 selectedMetric = metricType,
@@ -201,8 +227,11 @@ fun AlgorithmCard(
                 onClusterCountChange = onClusterCountChange,
                 onComparisonModeChange = onComparisonModeChange
             )
-        } else {
-            Column(
+            AlgorithmTab.Genetic -> GeneticMealRouteScreen(mapData = mapData)
+            AlgorithmTab.DecisionTree -> DecisionTreeScreen(
+                onOpenPlaceOnMap = onOpenRecommendedPlaceOnMap
+            )
+            else -> Column(
                 modifier = Modifier.padding(24.dp).fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -249,28 +278,50 @@ fun SplashScreen(onFinished: () -> Unit) {
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.White), contentAlignment = Alignment.Center) {
-        Box(
-            modifier = Modifier.size(300.dp).alpha(introAlpha.value).scale(introScale.value),
-            contentAlignment = Alignment.Center
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .padding(horizontal = 24.dp)
+                .alpha(introAlpha.value)
+                .scale(introScale.value)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.tgu_logo),
-                contentDescription = "Логотип ТГУ",
-                modifier = Modifier.size(130.dp)
-            )
-            Canvas(modifier = Modifier.size(230.dp)) {
-                rotate(baseRotation) {
-                    val sweep =
-                        if (headAngle >= tailAngle) headAngle - tailAngle else (360f - tailAngle) + headAngle
-                    drawArc(
-                        color = TGU_Blue,
-                        startAngle = tailAngle - 90f,
-                        sweepAngle = sweep.coerceAtLeast(8f),
-                        useCenter = false,
-                        style = Stroke(width = 12f, cap = StrokeCap.Round)
-                    )
+            Box(
+                modifier = Modifier.size(300.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.tgu_logo),
+                    contentDescription = "Логотип ТГУ",
+                    modifier = Modifier.size(130.dp)
+                )
+                Canvas(modifier = Modifier.size(230.dp)) {
+                    rotate(baseRotation) {
+                        val sweep =
+                            if (headAngle >= tailAngle) headAngle - tailAngle else (360f - tailAngle) + headAngle
+                        drawArc(
+                            color = TGU_Blue,
+                            startAngle = tailAngle - 90f,
+                            sweepAngle = sweep.coerceAtLeast(8f),
+                            useCenter = false,
+                            style = Stroke(width = 12f, cap = StrokeCap.Round)
+                        )
+                    }
                 }
             }
+            Spacer(modifier = Modifier.height(20.dp))
+            Text(
+                "Томский государственный университет",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TGU_Blue
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                "Карта кампуса · маршруты · подсказки по местам",
+                fontSize = 13.sp,
+                color = Color(0xFF5C6B7A),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

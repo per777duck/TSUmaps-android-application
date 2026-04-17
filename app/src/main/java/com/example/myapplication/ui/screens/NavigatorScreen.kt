@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,7 +18,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
@@ -30,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +55,8 @@ import com.example.myapplication.algorithms.Node
 import com.example.myapplication.data.map.MapCoordinateTransformer
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.map.MapRendering
+import com.example.myapplication.data.venues.CAMPUS_MAP_HEIGHT_PX
+import com.example.myapplication.data.venues.CAMPUS_MAP_WIDTH_PX
 import com.example.myapplication.ui.TGU_Blue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -59,7 +65,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun NavigatorScreen(mapData: MapData) {
+fun NavigatorScreen(
+    mapData: MapData,
+    venueFocusMapPosition: Offset? = null,
+    onVenueFocusHandled: () -> Unit = {}
+) {
     val scope = rememberCoroutineScope()
     var startNode by remember { mutableStateOf<Node?>(null) }
     var endNode by remember { mutableStateOf<Node?>(null) }
@@ -75,6 +85,22 @@ fun NavigatorScreen(mapData: MapData) {
 
     val algorithm = remember { AStarAlgorithm(mapData) }
 
+    LaunchedEffect(venueFocusMapPosition) {
+        val pos = venueFocusMapPosition ?: return@LaunchedEffect
+        val node = mapPixelOffsetToWalkableNode(mapData, pos) ?: return@LaunchedEffect
+        searchJob?.cancel()
+        isSearching = false
+        startNode = null
+        endNode = node
+        currentPath = emptyList()
+        displayedPath = emptyList()
+        openNodes = emptyList()
+        closedNodes = emptyList()
+        statusText = "Место из подсказки отмечено синей точкой. Выберите начало маршрута на карте."
+        isControlPanelVisible = true
+        onVenueFocusHandled()
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         MapSection(
             mapData = mapData,
@@ -87,13 +113,24 @@ fun NavigatorScreen(mapData: MapData) {
             onMapClick = { node ->
                 if (isSearching) return@MapSection
                 val nearest = findNearestWalkable(mapData, node.x, node.y) ?: return@MapSection
-                if (startNode == null || endNode != null) {
-                    startNode = nearest
-                    endNode = null
-                    statusText = "Начальная точка выбрана, выберите конечную"
-                } else {
-                    endNode = nearest
-                    statusText = "Можно запускать поиск маршрута"
+                when {
+                    startNode == null -> {
+                        startNode = nearest
+                        statusText = if (endNode != null) {
+                            "Старт выбран. Конечная точка сохранена (синяя). Можно строить путь."
+                        } else {
+                            "Начальная точка выбрана, выберите конечную"
+                        }
+                    }
+                    endNode == null -> {
+                        endNode = nearest
+                        statusText = "Можно запускать поиск маршрута"
+                    }
+                    else -> {
+                        // Keep focused destination; repeated tap updates only start point.
+                        startNode = nearest
+                        statusText = "Старт обновлён, конечная точка сохранена (синяя)."
+                    }
                 }
             }
         )
@@ -326,6 +363,19 @@ fun InputSection(
             )
             Text("A: ${startNode?.let { "${it.x},${it.y}" } ?: "не выбрано"}")
             Text("B: ${endNode?.let { "${it.x},${it.y}" } ?: "не выбрано"}")
+            Text(
+                "Легенда: красная — старт, синяя — цель, красная линия — маршрут.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                LegendItem(Color(0xFFFF1744), "Старт (A)")
+                LegendItem(Color(0xFF2979FF), "Цель (B)")
+                LegendItem(Color.Red, "Путь")
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -356,6 +406,25 @@ fun InputSection(
             }
         }
     }
+}
+
+@Composable
+private fun LegendItem(color: Color, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Text(text, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+private fun mapPixelOffsetToWalkableNode(mapData: MapData, offset: Offset): Node? {
+    val gx = (offset.x / CAMPUS_MAP_WIDTH_PX * mapData.width).toInt().coerceIn(0, mapData.width - 1)
+    val gy = (offset.y / CAMPUS_MAP_HEIGHT_PX * mapData.length).toInt().coerceIn(0, mapData.length - 1)
+    return findNearestWalkable(mapData, gx, gy)
 }
 
 private fun findNearestWalkable(mapData: MapData, x: Int, y: Int): Node? {
