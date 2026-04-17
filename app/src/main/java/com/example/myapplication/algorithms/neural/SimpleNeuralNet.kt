@@ -8,16 +8,16 @@ class SimpleNeuralNet(
 ) {
     init {
         require(weights.size == biases.size) {
-            "Weights and biases sizes must match"
+            "Количество весов и смещений должно совпадать"
         }
         require(weights.all { it.size == NeuralPreprocessor.InputSize }) {
-            "Each neuron must have ${NeuralPreprocessor.InputSize} weights"
+            "Каждый нейрон должен иметь ${NeuralPreprocessor.InputSize} весов"
         }
     }
 
     fun predict(input: FloatArray): DigitPrediction {
         require(input.size == NeuralPreprocessor.InputSize) {
-            "Expected ${NeuralPreprocessor.InputSize} inputs, got ${input.size}"
+            "Ожидалось ${NeuralPreprocessor.InputSize} входных данных, получил ${input.size}"
         }
 
         val logits = FloatArray(weights.size) { digit ->

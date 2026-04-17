@@ -7,7 +7,7 @@ object NeuralPreprocessor {
 
     fun toInputVector(pixels: List<Boolean>): FloatArray {
         require(pixels.size == InputSize) {
-            "Expected $InputSize pixels, got ${pixels.size}"
+            "Ожидалось $InputSize пикселей, получил ${pixels.size}"
         }
         return FloatArray(InputSize) { index ->
             if (pixels[index]) 1f else 0f

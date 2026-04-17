@@ -75,6 +75,7 @@ import com.example.myapplication.ui.screens.ClusteringScreen
 import com.example.myapplication.ui.screens.DecisionTreeScreen
 import com.example.myapplication.ui.screens.GeneticMealRouteScreen
 import com.example.myapplication.ui.screens.NavigatorScreen
+import com.example.myapplication.ui.screens.NeuralCanvas
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
