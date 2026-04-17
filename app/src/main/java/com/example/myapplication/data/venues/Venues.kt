@@ -16,6 +16,7 @@ data class Venue(
     val position: Offset,
     val type: VenueType,
     val metric: MetricType,
+    var userRating: Int? = null
 )
 
 val listOfVenues: List<Venue> = listOf(

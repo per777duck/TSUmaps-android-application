@@ -55,7 +55,8 @@ data class FoodVenue(
     val mapPosition: Offset,
     val menu: Set<FoodItem>,
     val openFromMinutes: Int,
-    val closeAtMinutes: Int
+    val closeAtMinutes: Int,
+    var userRating: Int? = null
 )
 
 val breakfastPreset: Set<FoodItem> = setOf(

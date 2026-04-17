@@ -12,14 +12,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,7 +36,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.myapplication.R
 import com.example.myapplication.data.venues.FoodVenue
 import com.example.myapplication.data.venues.Venue
 import com.example.myapplication.data.venues.foodVenues
@@ -80,6 +86,7 @@ fun NeuralCanvas(
     var isMenuExpanded by remember { mutableStateOf(false) }
     var pixels by remember { mutableStateOf(List(TotalPixels) { false }) }
     var toggledInGesture by remember { mutableStateOf(emptySet<Int>()) }
+    val recognizedDigitPlaceholder = stringResource(R.string.neural_recognized_digit_placeholder)
 
     fun indexFromOffset(touch: Offset, sizePx: Float): Int? {
         if (sizePx <= 0f) return null
@@ -111,9 +118,9 @@ fun NeuralCanvas(
                     .menuAnchor()
                     .fillMaxWidth(),
                 readOnly = true,
-                value = selectedPlace?.title ?: "Нет заведений",
+                value = selectedPlace?.title ?: stringResource(R.string.neural_no_venues),
                 onValueChange = {},
-                label = { Text("Выберите заведение") },
+                label = { Text(stringResource(R.string.neural_select_venue)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isMenuExpanded) }
             )
 
@@ -133,17 +140,37 @@ fun NeuralCanvas(
             }
         }
 
-        Text(
-            text = "Закрашено пикселей: ${pixels.count { it }}/$TotalPixels",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF5C6B7A)
-        )
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                color = Color(0xFFEFF3F8),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = stringResource(R.string.neural_recognized_digit_label),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF5C6B7A)
+                    )
+                    Text(
+                        text = recognizedDigitPlaceholder,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = TGU_Blue
+                    )
+                }
+            }
+        }
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .background(Color(0xFFF7F9FC)),
+                .background(Color(0xFFF7F9FC))
+                .padding(vertical = 8.dp),
             contentAlignment = Alignment.Center
         ) {
             Canvas(
@@ -240,6 +267,22 @@ fun NeuralCanvas(
             }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.weight(1f))
+
+        Button(
+            onClick = {
+                pixels = List(TotalPixels) { false }
+                toggledInGesture = emptySet()
+            },
+            modifier = Modifier
+                .fillMaxWidth(0.6f)
+                .heightIn(min = 40.dp)
+                .offset(y = 10.dp)
+                .align(Alignment.CenterHorizontally)
+        ) {
+            Text(stringResource(R.string.neural_clear_canvas))
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
     }
 }
