@@ -1,7 +1,7 @@
-package com.example.myapplication.algorithms.models
+package com.example.myapplication.algorithms.clusterization
 
-import com.example.myapplication.algorithms.AStarAlgorithm;
-import com.example.myapplication.algorithms.Node
+import com.example.myapplication.algorithms.routes.AStarAlgorithm;
+import com.example.myapplication.algorithms.routes.Node
 import com.example.myapplication.data.map.MapData
 
 class AStarMetric(private val mapData: MapData) : IDistanceMetrics {

@@ -1,4 +1,4 @@
-package com.example.myapplication.ui.screens
+package com.example.myapplication.ui.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.algorithms.decisiontree.DecisionTreeNode
-import com.example.myapplication.ui.TGU_Blue
 
 @Composable
 fun DecisionTreeVisual(

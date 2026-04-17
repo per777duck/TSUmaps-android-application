@@ -1,7 +1,7 @@
 package com.example.myapplication.features.path
 
-import com.example.myapplication.algorithms.AStarAlgorithm
-import com.example.myapplication.algorithms.Node
+import com.example.myapplication.algorithms.routes.AStarAlgorithm
+import com.example.myapplication.algorithms.routes.Node
 
 object PathfindingCoordinator {
     fun parseNode(input: String): Node {

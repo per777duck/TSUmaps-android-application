@@ -1,4 +1,4 @@
-package com.example.myapplication.algorithms
+package com.example.myapplication.algorithms.routes
 
 import com.example.myapplication.data.map.MapData
 import kotlinx.coroutines.delay

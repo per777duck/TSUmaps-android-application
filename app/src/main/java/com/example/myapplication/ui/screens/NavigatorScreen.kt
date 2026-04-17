@@ -50,14 +50,14 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.example.myapplication.algorithms.AStarAlgorithm
-import com.example.myapplication.algorithms.Node
+import com.example.myapplication.algorithms.routes.AStarAlgorithm
+import com.example.myapplication.algorithms.routes.Node
 import com.example.myapplication.data.map.MapCoordinateTransformer
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.map.MapRendering
 import com.example.myapplication.data.venues.CAMPUS_MAP_HEIGHT_PX
 import com.example.myapplication.data.venues.CAMPUS_MAP_WIDTH_PX
-import com.example.myapplication.ui.TGU_Blue
+import com.example.myapplication.ui.components.TGU_Blue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay

@@ -1,8 +1,5 @@
-package com.example.myapplication.algorithms
+package com.example.myapplication.algorithms.clusterization
 
-import com.example.myapplication.algorithms.models.IDistanceMetrics
-import com.example.myapplication.algorithms.models.Point
-import com.example.myapplication.algorithms.models.Cluster
 import kotlin.math.pow
 import kotlin.math.sqrt
 

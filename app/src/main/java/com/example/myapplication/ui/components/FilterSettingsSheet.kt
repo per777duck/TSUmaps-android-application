@@ -28,8 +28,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.data.venues.MetricType
 import com.example.myapplication.data.venues.VenueType
-import com.example.myapplication.ui.TGU_Blue
-import com.example.myapplication.ui.TGU_Gold
 import com.example.myapplication.features.clustering.ClusterAlgorithmType
 
 val ClusterColors = listOf(

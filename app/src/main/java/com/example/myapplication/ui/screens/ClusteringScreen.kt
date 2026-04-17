@@ -3,7 +3,6 @@ package com.example.myapplication.ui.screens
 import android.annotation.SuppressLint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,7 +33,7 @@ import com.example.myapplication.data.venues.VenueType
 import com.example.myapplication.features.clustering.ClusteringCoordinator
 import com.example.myapplication.ui.components.ClusterColors
 import com.example.myapplication.ui.components.FilterSettingsContent
-import com.example.myapplication.ui.TGU_Blue
+import com.example.myapplication.ui.components.TGU_Blue
 import com.example.myapplication.features.clustering.ClusterAlgorithmType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

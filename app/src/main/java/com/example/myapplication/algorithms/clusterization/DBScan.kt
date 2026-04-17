@@ -1,8 +1,4 @@
-package com.example.myapplication.algorithms
-
-import com.example.myapplication.algorithms.models.Cluster
-import com.example.myapplication.algorithms.models.IDistanceMetrics
-import com.example.myapplication.algorithms.models.Point
+package com.example.myapplication.algorithms.clusterization
 
 class DBScan(
     private val eps: Double,
@@ -23,7 +19,7 @@ class DBScan(
             if (pointStatuses[index] != UNVISITED) continue
 
             val neighbors = findingNeighbors(index, points, metric)
-            
+
             if (neighbors.size < minPoints) {
                 pointStatuses[index] = SINGLE
                 continue

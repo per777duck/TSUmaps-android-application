@@ -1,4 +1,4 @@
-package com.example.myapplication.ui
+package com.example.myapplication.ui.components
 
 import android.view.animation.Interpolator
 import android.view.animation.OvershootInterpolator

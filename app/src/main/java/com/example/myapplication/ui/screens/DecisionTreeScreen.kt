@@ -66,8 +66,13 @@ import com.example.myapplication.algorithms.decisiontree.DecisionTreeNode
 import com.example.myapplication.algorithms.decisiontree.Id3DecisionTree
 import com.example.myapplication.algorithms.decisiontree.TrainingSet
 import com.example.myapplication.data.venues.foodVenueForRecommendedPlace
-import com.example.myapplication.ui.TGU_Blue
-import com.example.myapplication.ui.TGU_Gold
+import com.example.myapplication.ui.components.TGU_Blue
+import com.example.myapplication.ui.components.TGU_Gold
+import com.example.myapplication.ui.components.DecisionTreeVisual
+import com.example.myapplication.ui.components.uiFeatureTitle
+import com.example.myapplication.ui.components.uiHumanizePathStep
+import com.example.myapplication.ui.components.uiPlaceTitle
+import com.example.myapplication.ui.components.uiValueLabel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

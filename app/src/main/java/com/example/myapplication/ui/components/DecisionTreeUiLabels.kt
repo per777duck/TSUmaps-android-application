@@ -1,4 +1,4 @@
-package com.example.myapplication.ui.screens
+package com.example.myapplication.ui.components
 
 internal fun uiFeatureTitle(internalName: String): String = when (internalName) {
     "location" -> "Где вы сейчас"
