@@ -1,15 +1,15 @@
-package com.example.myapplication.algorithms
+package com.example.myapplication.algorithms.ants
 
-import com.example.myapplication.algorithms.models.IDistanceMetrics
-import com.example.myapplication.algorithms.models.Point
+import com.example.myapplication.algorithms.clusterization.IDistanceMetrics
+import com.example.myapplication.algorithms.clusterization.Point
 import kotlin.math.pow
 import kotlin.random.Random
 
 data class AntColonyOptimizationParameters(
-    val antCount: Int = 30,
+    val antCount: Int = 100,
     val iterations: Int = 120,
     val alpha: Double = 1.0,
-    val beta: Double = 3.0,
+    val beta: Double = 2.0,
     val evaporationRate: Double = 0.45,
     val pheromoneDepositQ: Double = 120.0,
     val initialPheromone: Double = 1.0,
