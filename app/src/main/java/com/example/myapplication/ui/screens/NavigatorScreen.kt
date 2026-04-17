@@ -47,9 +47,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.example.myapplication.R
 import com.example.myapplication.algorithms.routes.AStarAlgorithm
 import com.example.myapplication.algorithms.routes.Node
 import com.example.myapplication.data.map.MapCoordinateTransformer
@@ -71,9 +74,21 @@ fun NavigatorScreen(
     onVenueFocusHandled: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val statusChooseStart = stringResource(R.string.nav_status_choose_start)
+    val statusPlaceMarked = stringResource(R.string.nav_status_place_marked)
+    val statusStartSelectedEndSaved = stringResource(R.string.nav_status_start_selected_end_saved)
+    val statusChooseEnd = stringResource(R.string.nav_status_choose_end)
+    val statusCanBuild = stringResource(R.string.nav_status_can_build)
+    val statusStartUpdated = stringResource(R.string.nav_status_start_updated)
+    val statusSwapped = stringResource(R.string.nav_status_swapped)
+    val statusSelectStartFirst = stringResource(R.string.nav_status_select_start_first)
+    val statusSelectEndNow = stringResource(R.string.nav_status_select_end_now)
+    val statusSearching = stringResource(R.string.nav_status_searching)
+    val statusPathNotFound = stringResource(R.string.nav_status_path_not_found)
     var startNode by remember { mutableStateOf<Node?>(null) }
     var endNode by remember { mutableStateOf<Node?>(null) }
-    var statusText by remember { mutableStateOf("Выберите начальную точку") }
+    var statusText by remember(statusChooseStart) { mutableStateOf(statusChooseStart) }
     var searchJob by remember { mutableStateOf<Job?>(null) }
     var isSearching by remember { mutableStateOf(false) }
 
@@ -96,7 +111,7 @@ fun NavigatorScreen(
         displayedPath = emptyList()
         openNodes = emptyList()
         closedNodes = emptyList()
-        statusText = "Место из подсказки отмечено синей точкой. Выберите начало маршрута на карте."
+        statusText = statusPlaceMarked
         isControlPanelVisible = true
         onVenueFocusHandled()
     }
@@ -117,19 +132,19 @@ fun NavigatorScreen(
                     startNode == null -> {
                         startNode = nearest
                         statusText = if (endNode != null) {
-                            "Старт выбран. Конечная точка сохранена (синяя). Можно строить путь."
+                            statusStartSelectedEndSaved
                         } else {
-                            "Начальная точка выбрана, выберите конечную"
+                            statusChooseEnd
                         }
                     }
                     endNode == null -> {
                         endNode = nearest
-                        statusText = "Можно запускать поиск маршрута"
+                        statusText = statusCanBuild
                     }
                     else -> {
                         // Keep focused destination; repeated tap updates only start point.
                         startNode = nearest
-                        statusText = "Старт обновлён, конечная точка сохранена (синяя)."
+                        statusText = statusStartUpdated
                     }
                 }
             }
@@ -153,7 +168,7 @@ fun NavigatorScreen(
                     displayedPath = emptyList()
                     openNodes = emptyList()
                     closedNodes = emptyList()
-                    statusText = "Выберите начальную точку"
+                    statusText = statusChooseStart
                 },
                 onSwapClick = {
                     if (!isSearching && startNode != null && endNode != null) {
@@ -162,23 +177,23 @@ fun NavigatorScreen(
                         endNode = tmp
                         displayedPath = emptyList()
                         currentPath = emptyList()
-                        statusText = "Точки поменяны местами"
+                        statusText = statusSwapped
                     }
                 },
                 onBuildClick = {
                     if (isSearching) return@InputSection
                     val start = startNode ?: run {
-                        statusText = "Сначала выберите начальную точку"
+                        statusText = statusSelectStartFirst
                         return@InputSection
                     }
                     val end = endNode ?: run {
-                        statusText = "Теперь выберите конечную точку"
+                        statusText = statusSelectEndNow
                         return@InputSection
                     }
 
                     searchJob?.cancel()
                     isSearching = true
-                    statusText = "Идёт поиск маршрута..."
+                    statusText = statusSearching
                     currentPath = emptyList()
                     displayedPath = emptyList()
                     openNodes = emptyList()
@@ -207,9 +222,9 @@ fun NavigatorScreen(
                                                 displayedPath = currentPath.take(i)
                                                 delay(8L)
                                             }
-                                            statusText = "Путь найден: ${currentPath.size} точек"
+                                            statusText = context.getString(R.string.nav_status_path_found, currentPath.size)
                                         } else {
-                                            statusText = "Путь не найден или превышен лимит 10 сек"
+                                            statusText = statusPathNotFound
                                         }
                                         isSearching = false
                                     }
@@ -229,7 +244,7 @@ fun NavigatorScreen(
             containerColor = TGU_Blue,
             contentColor = Color.White
         ) {
-            Icon(Icons.Default.Tune, contentDescription = "Панель навигации")
+            Icon(Icons.Default.Tune, contentDescription = stringResource(R.string.content_desc_nav_panel))
         }
     }
 }
@@ -342,6 +357,9 @@ fun InputSection(
     onSwapClick: () -> Unit,
     onBuildClick: () -> Unit
 ) {
+    val notSelected = stringResource(R.string.nav_coord_not_selected)
+    val coordA = startNode?.let { "${it.x},${it.y}" } ?: notSelected
+    val coordB = endNode?.let { "${it.x},${it.y}" } ?: notSelected
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
@@ -352,7 +370,7 @@ fun InputSection(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Навигация по карте", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.nav_panel_title), style = MaterialTheme.typography.titleMedium)
             Text(
                 statusText,
                 color = TGU_Blue,
@@ -361,10 +379,10 @@ fun InputSection(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth().height(22.dp)
             )
-            Text("A: ${startNode?.let { "${it.x},${it.y}" } ?: "не выбрано"}")
-            Text("B: ${endNode?.let { "${it.x},${it.y}" } ?: "не выбрано"}")
+            Text(stringResource(R.string.nav_coord_format, coordA))
+            Text(stringResource(R.string.nav_coord_b_format, coordB))
             Text(
-                "Легенда: красная — старт, синяя — цель, красная линия — маршрут.",
+                stringResource(R.string.nav_legend_text),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -372,9 +390,9 @@ fun InputSection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                LegendItem(Color(0xFFFF1744), "Старт (A)")
-                LegendItem(Color(0xFF2979FF), "Цель (B)")
-                LegendItem(Color.Red, "Путь")
+                LegendItem(Color(0xFFFF1744), stringResource(R.string.nav_legend_start))
+                LegendItem(Color(0xFF2979FF), stringResource(R.string.nav_legend_end))
+                LegendItem(Color.Red, stringResource(R.string.nav_legend_path))
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -387,13 +405,13 @@ fun InputSection(
                     onClick = onResetClick,
                     enabled = !isSearching,
                     modifier = Modifier.weight(1f).height(46.dp)
-                ) { Text("Сброс") }
+                ) { Text(stringResource(R.string.common_reset)) }
 
                 OutlinedButton(
                     onClick = onSwapClick,
                     enabled = !isSearching && startNode != null && endNode != null,
                     modifier = Modifier.weight(1f).height(46.dp)
-                ) { Text("A ↔ B") }
+                ) { Text(stringResource(R.string.common_swap_ab)) }
             }
 
             Button(
@@ -402,7 +420,10 @@ fun InputSection(
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = TGU_Blue)
             ) {
-                Text(if (isSearching) "ПОИСК..." else "ПОСТРОИТЬ ПУТЬ", color = Color.White)
+                Text(
+                    if (isSearching) stringResource(R.string.common_searching_upper) else stringResource(R.string.common_build_route_upper),
+                    color = Color.White
+                )
             }
         }
     }

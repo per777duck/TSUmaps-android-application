@@ -58,9 +58,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.myapplication.R
 import com.example.myapplication.algorithms.decisiontree.CsvTrainingParser
 import com.example.myapplication.algorithms.decisiontree.DecisionTreeNode
 import com.example.myapplication.algorithms.decisiontree.Id3DecisionTree
@@ -155,6 +158,7 @@ private fun StepHeader(number: Int, title: String, subtitle: String? = null) {
 fun DecisionTreeScreen(
     onOpenPlaceOnMap: (Offset) -> Unit = {}
 ) {
+    val context = LocalContext.current
     var csvText by remember { mutableStateOf("") }
     var maxDepth by remember { mutableStateOf(8f) }
     var compressForDisplay by remember { mutableStateOf(true) }
@@ -198,20 +202,23 @@ fun DecisionTreeScreen(
             val result = withContext(Dispatchers.Default) { CsvTrainingParser.parse(source) }
             result.fold(
                 onSuccess = { ts ->
-                    val built = withContext(Dispatchers.Default) {
-                        Id3DecisionTree.build(ts, maxDepth = maxDepth.toInt().coerceAtLeast(1))
+                    val maxDepthValue = maxDepth.toInt().coerceAtLeast(1)
+                    val computed = withContext(Dispatchers.Default) {
+                        val built = Id3DecisionTree.build(ts, maxDepth = maxDepthValue)
+                        val displayTree = if (compressForDisplay) {
+                            Id3DecisionTree.compressRedundant(built)
+                        } else {
+                            built
+                        }
+                        val text = Id3DecisionTree.formatTree(displayTree)
+                        val nodes = Id3DecisionTree.countNodes(displayTree)
+                        Triple(displayTree, text, nodes)
                     }
-                    val displayTree = if (compressForDisplay) {
-                        Id3DecisionTree.compressRedundant(built)
-                    } else {
-                        built
-                    }
-                    val text = withContext(Dispatchers.Default) { Id3DecisionTree.formatTree(displayTree) }
-                    val nodes = Id3DecisionTree.countNodes(displayTree)
+                    val (displayTree, text, nodes) = computed
                     applyBuiltState(ts, displayTree, text, nodes)
                 },
                 onFailure = { e ->
-                    parseError = e.message ?: "Не удалось разобрать таблицу"
+                    parseError = e.message ?: context.getString(R.string.decision_parse_failed)
                     tree = null
                     treeText = ""
                     nodeCount = 0
@@ -226,20 +233,23 @@ fun DecisionTreeScreen(
         val result = withContext(Dispatchers.Default) { CsvTrainingParser.parse(BUILTIN_TRAINING_CSV) }
         result.fold(
             onSuccess = { ts ->
-                val built = withContext(Dispatchers.Default) {
-                    Id3DecisionTree.build(ts, maxDepth = maxDepth.toInt().coerceAtLeast(1))
+                val maxDepthValue = maxDepth.toInt().coerceAtLeast(1)
+                val computed = withContext(Dispatchers.Default) {
+                    val built = Id3DecisionTree.build(ts, maxDepth = maxDepthValue)
+                    val displayTree = if (compressForDisplay) {
+                        Id3DecisionTree.compressRedundant(built)
+                    } else {
+                        built
+                    }
+                    val text = Id3DecisionTree.formatTree(displayTree)
+                    val nodes = Id3DecisionTree.countNodes(displayTree)
+                    Triple(displayTree, text, nodes)
                 }
-                val displayTree = if (compressForDisplay) {
-                    Id3DecisionTree.compressRedundant(built)
-                } else {
-                    built
-                }
-                val text = withContext(Dispatchers.Default) { Id3DecisionTree.formatTree(displayTree) }
-                val nodes = Id3DecisionTree.countNodes(displayTree)
+                val (displayTree, text, nodes) = computed
                 applyBuiltState(ts, displayTree, text, nodes)
             },
             onFailure = { e ->
-                parseError = e.message ?: "Ошибка загрузки"
+                parseError = e.message ?: context.getString(R.string.decision_load_error)
             }
         )
     }
@@ -258,20 +268,20 @@ fun DecisionTreeScreen(
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "Обед: подсказка по выборке",
+                    stringResource(R.string.decision_intro_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = TGU_Blue
                 )
                 Text(
-                    "Приложение построило дерево решений по примерам и ведёт вас по веткам, как по дорожке: сначала смотрите схему, затем ответьте про себя — в конце покажем заведение и путь по узлам.",
+                    stringResource(R.string.decision_intro_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
                     Icon(Icons.Default.Lightbulb, contentDescription = null, tint = TGU_Gold, modifier = Modifier.size(20.dp))
                     Text(
-                        "Вкладка «Карта» внизу — маршрут по кампусу. Здесь — только выбор места для еды.",
+                        stringResource(R.string.decision_intro_tip),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -288,8 +298,8 @@ fun DecisionTreeScreen(
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 StepHeader(
                     number = 1,
-                    title = "Схема дерева решений",
-                    subtitle = "Так модель различает ситуации по вашим примерам"
+                    title = stringResource(R.string.decision_step1_title),
+                    subtitle = stringResource(R.string.decision_step1_subtitle)
                 )
                 Row(
                     modifier = Modifier
@@ -301,7 +311,7 @@ fun DecisionTreeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        if (treeDiagramCollapsed) "Показать схему" else "Свернуть схему",
+                        if (treeDiagramCollapsed) stringResource(R.string.decision_show_diagram) else stringResource(R.string.decision_hide_diagram),
                         style = MaterialTheme.typography.labelLarge,
                         color = TGU_Blue
                     )
@@ -318,14 +328,14 @@ fun DecisionTreeScreen(
                                 Text(parseError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                             }
                             tree == null -> {
-                                Text("Строим дерево…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.decision_building_tree), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             else -> {
                                 tree?.let { root ->
                                     DecisionTreeVisual(node = root)
                                     training?.let { ts ->
                                         Text(
-                                            "${ts.rows.size} примеров в выборке · в схеме $nodeCount узлов",
+                                            stringResource(R.string.decision_dataset_stats, ts.rows.size, nodeCount),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -346,20 +356,20 @@ fun DecisionTreeScreen(
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 StepHeader(
                     number = 2,
-                    title = "Ваш случай",
-                    subtitle = "Отметьте варианты — так мы пройдём по дереву до листа"
+                    title = stringResource(R.string.decision_step2_title),
+                    subtitle = stringResource(R.string.decision_step2_subtitle)
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.TouchApp, contentDescription = null, tint = TGU_Blue, modifier = Modifier.size(22.dp))
                     Text(
-                        "Новые данные для обеда",
+                        stringResource(R.string.decision_new_lunch_data),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Medium
                     )
                 }
                 if (featureChoices.isEmpty()) {
                     Text(
-                        if (parseError != null) parseError!! else "Загружаем вопросы…",
+                        if (parseError != null) parseError!! else stringResource(R.string.decision_loading_questions),
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (parseError != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -406,16 +416,20 @@ fun DecisionTreeScreen(
         Button(
             onClick = {
                 val root = tree ?: return@Button
-                val result = Id3DecisionTree.predict(selectedFeatures, root)
-                recommendedRaw = result.label
-                pathStepsHuman = result.pathSteps.map { uiHumanizePathStep(it) }
-                pathNote = result.unresolvedReason?.let { reason ->
-                    when {
-                        reason.contains("Не задан признак") ->
-                            "Не хватает ответа по одному из пунктов — показан запасной вариант."
-                        reason.contains("не встречалось") ->
-                            "Такая комбинация не встречалась в примерах — показан ближайший подходящий вариант."
-                        else -> reason
+                scope.launch {
+                    val result = withContext(Dispatchers.Default) {
+                        Id3DecisionTree.predict(selectedFeatures, root)
+                    }
+                    recommendedRaw = result.label
+                    pathStepsHuman = result.pathSteps.map { uiHumanizePathStep(it) }
+                    pathNote = result.unresolvedReason?.let { reason ->
+                        when {
+                            reason.contains(context.getString(R.string.decision_missing_feature_marker)) ->
+                                context.getString(R.string.decision_missing_answer_note)
+                            reason.contains(context.getString(R.string.decision_unseen_marker)) ->
+                                context.getString(R.string.decision_unseen_combination_note)
+                            else -> reason
+                        }
                     }
                 }
             },
@@ -426,7 +440,7 @@ fun DecisionTreeScreen(
         ) {
             Icon(Icons.Default.Restaurant, contentDescription = null, modifier = Modifier.size(22.dp))
             Spacer(Modifier.size(8.dp))
-            Text("Получить рекомендацию и путь по дереву", style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.decision_get_recommendation), style = MaterialTheme.typography.titleSmall)
         }
 
         recommendedRaw?.let { raw ->
@@ -438,12 +452,12 @@ fun DecisionTreeScreen(
                 Column(Modifier.padding(18.dp)) {
                     StepHeader(
                         number = 3,
-                        title = "Результат",
-                        subtitle = "Заведение и маршрут по узлам дерева"
+                        title = stringResource(R.string.decision_step3_title),
+                        subtitle = stringResource(R.string.decision_step3_subtitle)
                     )
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "Рекомендуемое место",
+                        stringResource(R.string.decision_recommended_place),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -469,11 +483,11 @@ fun DecisionTreeScreen(
                 ) {
                     Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(22.dp))
                     Spacer(Modifier.size(8.dp))
-                    Text("Открыть на карте кампуса", style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.decision_open_on_map), style = MaterialTheme.typography.titleSmall)
                 }
             } else {
                 Text(
-                    "Для этой метки пока нет точки на карте приложения.",
+                    stringResource(R.string.decision_map_point_missing),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -489,14 +503,14 @@ fun DecisionTreeScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Icon(Icons.Default.Psychology, contentDescription = null, tint = TGU_Blue, modifier = Modifier.size(22.dp))
                             Text(
-                                "Путь по узлам дерева",
+                                stringResource(R.string.decision_tree_path_title),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = TGU_Blue
                             )
                         }
                         Text(
-                            "Каждый шаг — это переход по ветке после ответа на вопрос в узле.",
+                            stringResource(R.string.decision_tree_path_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -564,13 +578,13 @@ fun DecisionTreeScreen(
                 Icon(Icons.Default.Settings, contentDescription = null, tint = TGU_Blue)
                 Column {
                     Text(
-                        "Своя выборка и бонус: компактное дерево",
+                        stringResource(R.string.decision_training_section_title),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Medium,
                         color = TGU_Blue
                     )
                     Text(
-                        "Для задания: CSV, глубина, упрощение",
+                        stringResource(R.string.decision_training_section_subtitle),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -595,7 +609,7 @@ fun DecisionTreeScreen(
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        "Подсказка уже работает. Вставьте свою таблицу CSV, если нужно для отчёта: первая строка — названия столбцов, последний столбец — итоговое место.",
+                        stringResource(R.string.decision_csv_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -605,28 +619,28 @@ fun DecisionTreeScreen(
                         modifier = Modifier.fillMaxWidth().height(140.dp),
                         textStyle = MaterialTheme.typography.bodySmall,
                         minLines = 5,
-                        label = { Text("Своя таблица CSV") },
+                        label = { Text(stringResource(R.string.decision_csv_label)) },
                         placeholder = {
                             Text(
-                                "Необязательно — оставьте пустым",
+                                stringResource(R.string.decision_csv_placeholder),
                                 style = MaterialTheme.typography.bodySmall
                             )
                         },
                         shape = RoundedCornerShape(12.dp)
                     )
                     Text(
-                        "Бонус: удобнее смотреть на телефоне",
+                        stringResource(R.string.decision_bonus_title),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = TGU_Blue
                     )
                     Text(
-                        "Ограничьте глубину и включите упрощение — дерево станет меньше и аккуратнее на экране.",
+                        stringResource(R.string.decision_bonus_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Глубина", style = MaterialTheme.typography.labelMedium, modifier = Modifier.width(72.dp))
+                        Text(stringResource(R.string.decision_depth), style = MaterialTheme.typography.labelMedium, modifier = Modifier.width(72.dp))
                         Slider(
                             value = maxDepth,
                             onValueChange = { maxDepth = it },
@@ -639,7 +653,7 @@ fun DecisionTreeScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = compressForDisplay, onCheckedChange = { compressForDisplay = it })
                         Text(
-                            "Упростить дерево (склеить лишнее для экрана)",
+                            stringResource(R.string.decision_simplify_tree),
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -649,14 +663,14 @@ fun DecisionTreeScreen(
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = TGU_Blue)
                     ) {
-                        Text("Применить и пересчитать дерево")
+                        Text(stringResource(R.string.decision_apply_rebuild))
                     }
                     parseError?.let { err ->
                         Text(err, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                     training?.let { ts ->
                         Text(
-                            "Строк в данных: ${ts.rows.size} · узлов в схеме: $nodeCount",
+                            stringResource(R.string.decision_training_stats, ts.rows.size, nodeCount),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -670,7 +684,7 @@ fun DecisionTreeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Текстовая схема (для отчёта)",
+                            stringResource(R.string.decision_technical_tree),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -682,7 +696,7 @@ fun DecisionTreeScreen(
                     }
                     AnimatedVisibility(visible = showTechnicalTree) {
                         Text(
-                            text = treeText.ifBlank { "—" },
+                            text = treeText.ifBlank { stringResource(R.string.decision_tree_empty) },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

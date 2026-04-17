@@ -24,7 +24,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.myapplication.R
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.map.MapRendering.TguMapWrapper
 import com.example.myapplication.data.venues.MetricType
@@ -158,7 +160,7 @@ fun ClusteringScreen(
             containerColor = TGU_Blue,
             contentColor = Color.White
         ) {
-            Icon(Icons.Default.FilterList, contentDescription = "Фильтры кластеризации")
+            Icon(Icons.Default.FilterList, contentDescription = stringResource(R.string.content_desc_cluster_filters))
         }
     }
 }
