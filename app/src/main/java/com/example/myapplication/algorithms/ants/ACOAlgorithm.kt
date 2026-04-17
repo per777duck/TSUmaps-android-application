@@ -1,9 +1,8 @@
-package com.example.myapplication.algorithms
+package com.example.myapplication.algorithms.ants
 
 import com.example.myapplication.algorithms.clusterization.AStarMetric
 import com.example.myapplication.algorithms.clusterization.IDistanceMetrics
 import com.example.myapplication.algorithms.clusterization.Point
-import com.example.myapplication.algorithms.ants.buildPolyline
 import kotlin.math.pow
 import kotlin.random.Random
 
@@ -23,7 +22,8 @@ data class ACORouteResult(
     val orderedPoints: List<Point>,
     val orderedPointIds: List<Int>,
     val distance: Double,
-    val antTrajectories: List<List<Point>> = emptyList()
+    val antTrajectories: List<List<Point>> = emptyList(),
+    val antTrajectoriesByIteration: List<List<List<Point>>> = emptyList()
 )
 
 class ACOAlgorithm(private val parameters: ACOParameters = ACOParameters()) {
@@ -40,7 +40,7 @@ class ACOAlgorithm(private val parameters: ACOParameters = ACOParameters()) {
 
         var globalBestRoute: List<Int>? = null
         var globalBestDistance = Double.POSITIVE_INFINITY
-        var lastIterationRoutes: List<List<Int>> = emptyList()
+        val trajectoriesByIteration = mutableListOf<List<List<Point>>>()
 
         repeat(parameters.iterations) {
             val iterationRoutes = mutableListOf<Pair<List<Int>, Double>>()
@@ -63,7 +63,10 @@ class ACOAlgorithm(private val parameters: ACOParameters = ACOParameters()) {
 
             evaporatePheromones(pheromones, parameters.evaporationRate)
             depositPheromones(pheromones, iterationRoutes, parameters)
-            lastIterationRoutes = iterationRoutes.map { it.first }
+            trajectoriesByIteration += iterationRoutes.map { (routeIndexes, _) ->
+                val antRoutePoints = buildRoutePoints(points, routeIndexes, parameters.returnToStart)
+                if (metric is AStarMetric) buildPolyline(metric, antRoutePoints) else antRoutePoints
+            }
         }
 
         val bestRoute = globalBestRoute
@@ -80,16 +83,14 @@ class ACOAlgorithm(private val parameters: ACOParameters = ACOParameters()) {
         } else {
             routeWithReturn
         }
-        val antTrajectories = lastIterationRoutes.map { routeIndexes ->
-            val antRoutePoints = buildRoutePoints(points, routeIndexes, parameters.returnToStart)
-            if (metric is AStarMetric) buildPolyline(metric, antRoutePoints) else antRoutePoints
-        }
+        val antTrajectories = trajectoriesByIteration.lastOrNull() ?: emptyList()
 
         return ACORouteResult(
             orderedPoints = renderedRoutePoints,
             orderedPointIds = routeWithReturn.map { it.id },
             distance = globalBestDistance,
-            antTrajectories = antTrajectories
+            antTrajectories = antTrajectories,
+            antTrajectoriesByIteration = trajectoriesByIteration
         )
     }
 

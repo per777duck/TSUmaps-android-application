@@ -1,7 +1,7 @@
-package com.example.myapplication.algorithms.models
+package com.example.myapplication.algorithms.clusterization
 
-import com.example.myapplication.algorithms.AStarAlgorithm
-import com.example.myapplication.algorithms.Node
+import com.example.myapplication.algorithms.routes.AStarAlgorithm
+import com.example.myapplication.algorithms.routes.Node
 
 class AStarMetric(private val algorithm: AStarAlgorithm) : IDistanceMetrics {
     private val distanceCache = mutableMapOf<SegmentKey, Double>()
@@ -17,49 +17,14 @@ class AStarMetric(private val algorithm: AStarAlgorithm) : IDistanceMetrics {
         return distanceCache[key] ?: computeAndCache(startNode, endNode)
     }
 
-    fun buildPolyline(orderedPoints: List<Point>): List<Point> {
-        if (orderedPoints.isEmpty()) return emptyList()
-        if (orderedPoints.size == 1) return orderedPoints
-
-        val polyline = mutableListOf<Point>()
-        for (i in 0 until orderedPoints.lastIndex) {
-            val from = orderedPoints[i]
-            val to = orderedPoints[i + 1]
-            val segment = pathBetween(from, to)
-
-            if (segment != null && segment.isNotEmpty()) {
-                segment.forEach { node ->
-                    val pathPoint = Point(id = -1, x = node.x.toDouble(), y = node.y.toDouble())
-                    val isDuplicate = polyline.lastOrNull()?.let {
-                        it.x == pathPoint.x && it.y == pathPoint.y
-                    } ?: false
-                    if (!isDuplicate) {
-                        polyline.add(pathPoint)
-                    }
-                }
-            } else {
-                if (polyline.isEmpty()) {
-                    polyline.add(from)
-                } else {
-                    val last = polyline.last()
-                    if (last.x != from.x || last.y != from.y) {
-                        polyline.add(from)
-                    }
-                }
-
-        return path?.lastOrNull()?.currentCost ?: Double.POSITIVE_INFINITY
-    }
-
-    private fun pathBetween(p1: Point, p2: Point): List<Node>? {
+    fun pathBetween(p1: Point, p2: Point): List<Node>? {
         val startNode = algorithm.nearestWalkable(p1.x.toInt(), p1.y.toInt()) ?: return null
         val endNode = algorithm.nearestWalkable(p2.x.toInt(), p2.y.toInt()) ?: return null
         if (startNode == endNode) return listOf(startNode)
 
         val key = SegmentKey(startNode.x, startNode.y, endNode.x, endNode.y)
         val cached = pathCache[key]
-        if (cached != null || pathCache.containsKey(key)) {
-            return cached
-        }
+        if (cached != null || pathCache.containsKey(key)) return cached
 
         computeAndCache(startNode, endNode)
         return pathCache[key]

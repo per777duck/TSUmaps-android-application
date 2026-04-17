@@ -1,31 +1,30 @@
-package com.example.myapplication.algorithms
+package com.example.myapplication.algorithms.ants
 
-import com.example.myapplication.algorithms.models.IDistanceMetrics
-import com.example.myapplication.algorithms.models.Point
+import com.example.myapplication.algorithms.clusterization.IDistanceMetrics
+import com.example.myapplication.algorithms.clusterization.Point
 import kotlin.math.pow
 import kotlin.random.Random
 
-data class ACOParameters(
-    val antCount: Int = 30,
+data class AntColonyOptimizationParameters(
+    val antCount: Int = 100,
     val iterations: Int = 120,
     val alpha: Double = 1.0,
-    val beta: Double = 3.0,
+    val beta: Double = 2.0,
     val evaporationRate: Double = 0.45,
     val pheromoneDepositQ: Double = 120.0,
     val initialPheromone: Double = 1.0,
     val returnToStart: Boolean = true
 )
 
-data class ACORouteResult(
+data class AntColonyOptimizationRouteResult(
     val orderedPoints: List<Point>,
     val orderedPointIds: List<Int>,
     val distance: Double
 )
 
-class ACOAlgorithm(private val parameters: ACOParameters = ACOParameters())
+class AntColonyOptimizationAlgorithm(private val parameters: AntColonyOptimizationParameters = AntColonyOptimizationParameters())
 {
-
-    suspend fun run(points: List<Point>, metric: IDistanceMetrics): ACORouteResult
+    suspend fun run(points: List<Point>, metric: IDistanceMetrics): AntColonyOptimizationRouteResult
     {
         require(points.isNotEmpty()) { "Список не должен быть пустым!" }
         require(points.size >= 2) { "Необходимо выбрать минимум 2 точки!" }
@@ -69,7 +68,7 @@ class ACOAlgorithm(private val parameters: ACOParameters = ACOParameters())
             orderedPoints
         }
 
-        return ACORouteResult(
+        return AntColonyOptimizationRouteResult(
             orderedPoints = routeWithReturn,
             orderedPointIds = routeWithReturn.map { it.id },
             distance = globalBestDistance
@@ -203,7 +202,7 @@ class ACOAlgorithm(private val parameters: ACOParameters = ACOParameters())
     private fun depositPheromones(
         pheromones: Array<DoubleArray>,
         routes: List<Pair<List<Int>, Double>>,
-        params: ACOParameters
+        params: AntColonyOptimizationParameters
     )
     {
         routes.forEach { (route, distance) ->

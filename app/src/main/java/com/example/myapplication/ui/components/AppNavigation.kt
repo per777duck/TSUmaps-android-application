@@ -274,7 +274,7 @@ fun AlgorithmCard(
                 onClusterCountChange = onClusterCountChange,
                 onComparisonModeChange = onComparisonModeChange
             )
-
+            AlgorithmTab.Ants -> AntsScreen(mapData = mapData)
             AlgorithmTab.Genetic -> GeneticMealRouteScreen(mapData = mapData)
             AlgorithmTab.NeuralNet -> NeuralCanvas()
             AlgorithmTab.DecisionTree -> DecisionTreeScreen(

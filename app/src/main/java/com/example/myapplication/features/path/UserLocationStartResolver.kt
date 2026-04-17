@@ -5,9 +5,9 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import androidx.core.content.ContextCompat
-import com.example.myapplication.algorithms.AStarAlgorithm
-import com.example.myapplication.algorithms.GeoBounds
-import com.example.myapplication.algorithms.Node
+import com.example.myapplication.algorithms.routes.AStarAlgorithm
+import com.example.myapplication.algorithms.routes.GeoBounds
+import com.example.myapplication.algorithms.routes.Node
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
