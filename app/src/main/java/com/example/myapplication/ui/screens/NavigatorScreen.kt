@@ -1,5 +1,8 @@
 package com.example.myapplication.ui.screens
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -62,6 +65,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -77,6 +81,9 @@ import com.example.myapplication.data.venues.CAMPUS_MAP_HEIGHT_PX
 import com.example.myapplication.data.venues.CAMPUS_MAP_WIDTH_PX
 import com.example.myapplication.ui.components.TGU_Blue
 import com.example.myapplication.ui.components.TGU_Gold
+import com.example.myapplication.features.path.StartNodeResolveStatus
+import com.example.myapplication.features.path.UserLocationStartResolver
+import com.example.myapplication.ui.TGU_Blue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -129,6 +136,64 @@ fun NavigatorScreen(
     }
 
     val algorithm = remember { AStarAlgorithm(mapData) }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (!granted) {
+            statusText = "Геопозиция недоступна. Выберите начальную точку вручную"
+            return@rememberLauncherForActivityResult
+        }
+
+        scope.launch {
+            val result = withContext(Dispatchers.Default) {
+                UserLocationStartResolver.resolveStartNode(context, algorithm)
+            }
+            when (result.status) {
+                StartNodeResolveStatus.SUCCESS -> {
+                    startNode = result.node
+                    statusText = "Начальная точка определена автоматически, выберите конечную"
+                }
+                StartNodeResolveStatus.OUT_OF_MAP_BOUNDS -> {
+                    statusText = "Геопозиция вне карты. Выберите начальную точку вручную"
+                }
+                StartNodeResolveStatus.LOCATION_UNAVAILABLE,
+                StartNodeResolveStatus.PERMISSION_DENIED -> {
+                    statusText = "Геопозиция недоступна. Выберите начальную точку вручную"
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (!UserLocationStartResolver.hasLocationPermission(context)) {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+            return@LaunchedEffect
+        }
+
+        val result = withContext(Dispatchers.Default) {
+            UserLocationStartResolver.resolveStartNode(context, algorithm)
+        }
+        when (result.status) {
+            StartNodeResolveStatus.SUCCESS -> {
+                startNode = result.node
+                statusText = "Начальная точка определена автоматически, выберите конечную"
+            }
+            StartNodeResolveStatus.OUT_OF_MAP_BOUNDS -> {
+                statusText = "Геопозиция вне карты. Выберите начальную точку вручную"
+            }
+            StartNodeResolveStatus.LOCATION_UNAVAILABLE,
+            StartNodeResolveStatus.PERMISSION_DENIED -> {
+                statusText = "Геопозиция недоступна. Выберите начальную точку вручную"
+            }
+        }
+    }
 
     LaunchedEffect(venueFocusMapPosition, barrierCells) {
         val pos = venueFocusMapPosition ?: return@LaunchedEffect
@@ -177,7 +242,6 @@ fun NavigatorScreen(
                     }
 
                     else -> {
-                        // Keep focused destination; repeated tap updates only start point.
                         startNode = nearest
                         statusText = statusStartUpdated
                     }

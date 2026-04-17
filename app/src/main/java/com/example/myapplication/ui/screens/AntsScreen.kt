@@ -1,6 +1,10 @@
 package com.example.myapplication.ui.screens
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Column
@@ -22,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -35,14 +40,24 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.example.myapplication.algorithms.ACOParameters
 import com.example.myapplication.algorithms.ACOAlgorithm
+import com.example.myapplication.algorithms.AStarAlgorithm
+import com.example.myapplication.algorithms.Node
 import com.example.myapplication.algorithms.models.AStarMetric
 import com.example.myapplication.algorithms.models.Point
+import com.example.myapplication.data.map.MapCoordinateTransformer
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.map.MapRendering.TguMapWrapper
 import com.example.myapplication.data.venues.VenueType
 import com.example.myapplication.data.venues.listOfVenues
+import com.example.myapplication.features.path.StartNodeResolveStatus
+import com.example.myapplication.features.path.UserLocationStartResolver
 import com.example.myapplication.ui.TGU_Blue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -50,16 +65,78 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun AntsScreen(mapData: MapData) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val algorithm = remember { AStarAlgorithm(mapData) }
     var isControlPanelVisible by remember { mutableStateOf(false) }
     var isBuildingRoute by remember { mutableStateOf(false) }
-    var statusText by remember { mutableStateOf("Выберите минимум 2 достопримечательности") }
+    var statusText by remember { mutableStateOf("Определяем текущее местоположение...") }
     var routePoints by remember { mutableStateOf<List<Point>>(emptyList()) }
+    var startNode by remember { mutableStateOf<Node?>(null) }
+    var contentSize by remember { mutableStateOf(IntSize.Zero) }
     val selectedVenueIds = remember { mutableStateListOf<Int>() }
     val availableSightseeings = remember {
         listOfVenues
             .filter { it.type == VenueType.SIGHTSEEING && it.id in 4..12 }
             .sortedBy { it.id }
+    }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (!granted) {
+            statusText = "Геопозиция недоступна. Нажмите на карту, чтобы выбрать старт вручную"
+            return@rememberLauncherForActivityResult
+        }
+
+        scope.launch {
+            val result = withContext(Dispatchers.Default) {
+                UserLocationStartResolver.resolveStartNode(context, algorithm)
+            }
+            when (result.status) {
+                StartNodeResolveStatus.SUCCESS -> {
+                    startNode = result.node
+                    statusText = "Старт определен автоматически. Выберите минимум 2 достопримечательности"
+                }
+                StartNodeResolveStatus.OUT_OF_MAP_BOUNDS -> {
+                    statusText = "Геопозиция вне карты. Нажмите на карту и выберите старт вручную"
+                }
+                StartNodeResolveStatus.LOCATION_UNAVAILABLE,
+                StartNodeResolveStatus.PERMISSION_DENIED -> {
+                    statusText = "Геопозиция недоступна. Нажмите на карту, чтобы выбрать старт вручную"
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (!UserLocationStartResolver.hasLocationPermission(context)) {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+            return@LaunchedEffect
+        }
+
+        val result = withContext(Dispatchers.Default) {
+            UserLocationStartResolver.resolveStartNode(context, algorithm)
+        }
+        when (result.status) {
+            StartNodeResolveStatus.SUCCESS -> {
+                startNode = result.node
+                statusText = "Старт определен автоматически. Выберите минимум 2 достопримечательности"
+            }
+            StartNodeResolveStatus.OUT_OF_MAP_BOUNDS -> {
+                statusText = "Геопозиция вне карты. Нажмите на карту и выберите старт вручную"
+            }
+            StartNodeResolveStatus.LOCATION_UNAVAILABLE,
+            StartNodeResolveStatus.PERMISSION_DENIED -> {
+                statusText = "Геопозиция недоступна. Нажмите на карту, чтобы выбрать старт вручную"
+            }
+        }
     }
 
     Box(
@@ -74,7 +151,26 @@ fun AntsScreen(mapData: MapData) {
                 .fillMaxSize()
                 .clip(MaterialTheme.shapes.extraLarge)
         ) { currentScale, _, _ ->
-            Canvas(modifier = Modifier.fillMaxSize()) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onSizeChanged { contentSize = it }
+                    .pointerInput(mapData, contentSize) {
+                        detectTapGestures { tapOffset ->
+                            if (contentSize.width == 0 || contentSize.height == 0) return@detectTapGestures
+                            val rawNode = MapCoordinateTransformer.tapToGrid(
+                                tapOffset = tapOffset,
+                                canvasWidth = contentSize.width.toFloat(),
+                                canvasHeight = contentSize.height.toFloat(),
+                                mapData = mapData
+                            )
+                            val nearest = algorithm.nearestWalkable(rawNode.x, rawNode.y) ?: return@detectTapGestures
+                            startNode = nearest
+                            routePoints = emptyList()
+                            statusText = "Старт выбран вручную. Выберите минимум 2 достопримечательности"
+                        }
+                    }
+            ) {
                 val scaleX = size.width / mapData.width.toFloat()
                 val scaleY = size.height / mapData.length.toFloat()
 
@@ -105,6 +201,14 @@ fun AntsScreen(mapData: MapData) {
                         path = path,
                         color = Color.Red,
                         style = Stroke(width = 5f / currentScale.coerceAtLeast(1f))
+                    )
+                }
+
+                startNode?.let { node ->
+                    drawCircle(
+                        color = Color(0xFFFF1744),
+                        radius = 9f / currentScale.coerceAtLeast(1f),
+                        center = Offset(node.x * scaleX, node.y * scaleY)
                     )
                 }
             }
@@ -166,10 +270,18 @@ fun AntsScreen(mapData: MapData) {
                                 statusText = "Нужно выбрать минимум 2 достопримечательности"
                                 return@Button
                             }
+                            val start = startNode
+                            if (start == null) {
+                                statusText = "Сначала определите старт (авто или тап по карте)"
+                                return@Button
+                            }
 
                             val selectedPoints = availableSightseeings
                                 .filter { selectedVenueIds.contains(it.id) }
                                 .map { Point(id = it.id, x = it.x.toDouble(), y = it.y.toDouble()) }
+                            val routeInputPoints = listOf(
+                                Point(id = -1, x = start.x.toDouble(), y = start.y.toDouble())
+                            ) + selectedPoints
 
                             scope.launch {
                                 isBuildingRoute = true
@@ -177,8 +289,13 @@ fun AntsScreen(mapData: MapData) {
                                 routePoints = emptyList()
                                 try {
                                     val result = withContext(Dispatchers.Default) {
-                                        val metric = AStarMetric(mapData)
-                                        ACOAlgorithm().run(selectedPoints, metric)
+                                        val metric = AStarMetric(algorithm)
+                                        ACOAlgorithm(
+                                            ACOParameters(
+                                                returnToStart = false,
+                                                fixedStartIndex = 0
+                                            )
+                                        ).run(routeInputPoints, metric)
                                     }
                                     routePoints = result.orderedPoints
                                     statusText = "Маршрут построен. Длина: %.1f".format(result.distance)

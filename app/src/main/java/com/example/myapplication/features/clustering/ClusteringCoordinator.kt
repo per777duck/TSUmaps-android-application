@@ -17,8 +17,8 @@ enum class ClusterAlgorithmType {
 }
 
 object ClusteringCoordinator {
-    private const val DEFAULT_EPS = 20.0
-    private const val DEFAULT_MIN_POINTS = 4
+    private const val DEFAULT_EPS = 40.0
+    private const val DEFAULT_MIN_POINTS = 2
 
     suspend fun findingClusters(
         venues: List<Venue>,
@@ -62,7 +62,6 @@ object ClusteringCoordinator {
             ClusterAlgorithmType.KMEANS -> {
                 KmeansAlgorithm(limitedClusterCount).run(points, metric1)
             }
-
             ClusterAlgorithmType.DBSCAN -> {
                 DBScan(DEFAULT_EPS, DEFAULT_MIN_POINTS).run(points, metric1)
             }
