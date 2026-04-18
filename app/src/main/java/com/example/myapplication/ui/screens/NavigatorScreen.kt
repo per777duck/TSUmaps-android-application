@@ -83,7 +83,6 @@ import com.example.myapplication.ui.components.TGU_Blue
 import com.example.myapplication.ui.components.TGU_Gold
 import com.example.myapplication.features.path.StartNodeResolveStatus
 import com.example.myapplication.features.path.UserLocationStartResolver
-import com.example.myapplication.ui.TGU_Blue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
