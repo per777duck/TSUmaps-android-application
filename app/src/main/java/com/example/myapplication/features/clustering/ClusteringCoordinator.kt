@@ -6,6 +6,7 @@ import com.example.myapplication.algorithms.clusterization.DBScan
 import com.example.myapplication.algorithms.clusterization.EuclideanMetric
 import com.example.myapplication.algorithms.clusterization.KmeansAlgorithm
 import com.example.myapplication.algorithms.clusterization.Point
+import com.example.myapplication.algorithms.routes.AStarAlgorithm
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.venues.MetricType
 import com.example.myapplication.data.venues.Venue
@@ -50,7 +51,7 @@ object ClusteringCoordinator {
         val primaryMetricType = selectedMetric ?: MetricType.EUCLIDEAN
         val metric1 = when (primaryMetricType) {
             MetricType.EUCLIDEAN -> EuclideanMetric()
-            MetricType.ASTAR -> AStarMetric(mapData)
+            MetricType.ASTAR -> AStarMetric(AStarAlgorithm(mapData))
         }
 
         val limitedClusterCount = clusterCount
@@ -78,7 +79,7 @@ object ClusteringCoordinator {
         }
         val metric2 = when (secondaryMetricType) {
             MetricType.EUCLIDEAN -> EuclideanMetric()
-            MetricType.ASTAR -> AStarMetric(mapData)
+            MetricType.ASTAR -> AStarMetric(AStarAlgorithm(mapData))
         }
 
         val secondaryResult = when (selectedAlgorithm) {
