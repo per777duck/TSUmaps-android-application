@@ -39,7 +39,13 @@ class AStarAlgorithm(private val mapData: MapData) {
         return max(abs(a.x - b.x), abs(a.y - b.y)).toDouble()
     }
 
-    private fun getNeighbors(node: Node): List<Pair<Node, Double>> {
+    private fun isWalkable(x: Int, y: Int, userBarriers: Set<Pair<Int, Int>>): Boolean {
+        if (!mapData.isAvailable(x, y)) return false
+        if (x to y in userBarriers) return false
+        return true
+    }
+
+    private fun getNeighbors(node: Node, userBarriers: Set<Pair<Int, Int>>): List<Pair<Node, Double>> {
         val neighbors = mutableListOf<Pair<Node, Double>>()
 
         val moves = listOf(
@@ -59,10 +65,12 @@ class AStarAlgorithm(private val mapData: MapData) {
 
             if (nx !in 0 until mapData.width || ny !in 0 until mapData.length) continue
 
-            if (!mapData.isAvailable(nx, ny)) continue
+            if (!isWalkable(nx, ny, userBarriers)) continue
 
             if (isDiagonal) {
-                if (!mapData.isAvailable(node.x, ny) || !mapData.isAvailable(nx, node.y)) continue
+                if (!isWalkable(node.x, ny, userBarriers) || !isWalkable(nx, node.y, userBarriers)) {
+                    continue
+                }
                 neighbors.add(Node(nx, ny) to diagonalCost)
             } else {
                 neighbors.add(Node(nx, ny) to straightCost)
@@ -79,9 +87,10 @@ class AStarAlgorithm(private val mapData: MapData) {
         maxDurationMs: Long = 10_000L,
         callbackStride: Int = 10,
         visualizationLimit: Int = 3500,
+        userBarriers: Set<Pair<Int, Int>> = emptySet(),
         callback: (SearchState) -> Unit
     ): List<Node>? {
-        if (!mapData.isAvailable(start.x, start.y) || !mapData.isAvailable(end.x, end.y)) {
+        if (!isWalkable(start.x, start.y, userBarriers) || !isWalkable(end.x, end.y, userBarriers)) {
             callback(SearchState(emptyList(), emptyList(), emptyList(), true, null))
             return null
         }
@@ -136,7 +145,7 @@ class AStarAlgorithm(private val mapData: MapData) {
                     )
                 )
             }
-            for ((neighbor, moveCost) in getNeighbors(current)) {
+            for ((neighbor, moveCost) in getNeighbors(current, userBarriers)) {
                 if (neighbor in closedSet) continue
 
                 val tentativeG = current.currentCost + moveCost
@@ -206,8 +215,12 @@ class AStarAlgorithm(private val mapData: MapData) {
         return path.reversed()
     }
 
-    fun findPathSync(start: Node, end: Node): List<Node>? {
-        if (!mapData.isAvailable(start.x, start.y) || !mapData.isAvailable(end.x, end.y)) {
+    fun findPathSync(
+        start: Node,
+        end: Node,
+        userBarriers: Set<Pair<Int, Int>> = emptySet()
+    ): List<Node>? {
+        if (!isWalkable(start.x, start.y, userBarriers) || !isWalkable(end.x, end.y, userBarriers)) {
             return null
         }
 
@@ -235,7 +248,7 @@ class AStarAlgorithm(private val mapData: MapData) {
             openSet.remove(current)
             closedSet.add(current)
 
-            for ((neighbor, moveCost) in getNeighbors(current)) {
+            for ((neighbor, moveCost) in getNeighbors(current, userBarriers)) {
                 if (neighbor in closedSet) continue
 
                 val tentativeG = current.currentCost + moveCost

@@ -59,6 +59,8 @@
     <string name="nav_legend_start">Старт (A)</string>
     <string name="nav_legend_end">Цель (B)</string>
     <string name="nav_legend_path">Путь</string>
+    <string name="nav_drawing_mode">Ограждения</string>
+    <string name="nav_clear_drawing">Очистить</string>
 
     <string name="common_reset">Сброс</string>
     <string name="common_swap_ab">A ↔ B</string>
@@ -86,6 +88,7 @@
     <string name="genetic_purchase">Покупка: %1$s</string>
     <string name="genetic_arrival_departure">Прибытие %1$s -> выход %2$s (+%3$d мин от старта)</string>
     <string name="genetic_working_hours">Режим работы: %1$s - %2$s</string>
+
     <string name="food_category_breakfast">Завтрак</string>
     <string name="food_category_lunch">Обед</string>
     <string name="food_category_dinner">Ужин</string>
@@ -133,9 +136,9 @@
     <string name="decision_training_stats">Строк в данных: %1$d · узлов в схеме: %2$d</string>
     <string name="decision_technical_tree">Текстовая схема (для отчёта)</string>
     <string name="decision_tree_empty">—</string>
+
     <string name="neural_no_venues">Нет заведений</string>
     <string name="neural_select_venue">Выберите заведение</string>
-    <string name="neural_filled_pixels">Закрашено пикселей: %1$d/%2$d</string>
     <string name="neural_recognized_digit_label">Распознанная цифра</string>
     <string name="neural_recognized_digit_placeholder">—</string>
     <string name="neural_clear_canvas">Очистить</string>

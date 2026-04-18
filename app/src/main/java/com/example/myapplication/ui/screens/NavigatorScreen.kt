@@ -8,6 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -25,11 +26,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -44,10 +47,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -64,9 +72,11 @@ import com.example.myapplication.algorithms.routes.Node
 import com.example.myapplication.data.map.MapCoordinateTransformer
 import com.example.myapplication.data.map.MapData
 import com.example.myapplication.data.map.MapRendering
+import com.example.myapplication.data.map.inkStrokesToBarrierCells
 import com.example.myapplication.data.venues.CAMPUS_MAP_HEIGHT_PX
 import com.example.myapplication.data.venues.CAMPUS_MAP_WIDTH_PX
 import com.example.myapplication.ui.components.TGU_Blue
+import com.example.myapplication.ui.components.TGU_Gold
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -93,6 +103,8 @@ fun NavigatorScreen(
     val statusSelectEndNow = stringResource(R.string.nav_status_select_end_now)
     val statusSearching = stringResource(R.string.nav_status_searching)
     val statusPathNotFound = stringResource(R.string.nav_status_path_not_found)
+    val drawingModeLabel = stringResource(R.string.nav_drawing_mode)
+    val clearDrawingLabel = stringResource(R.string.nav_clear_drawing)
     var startNode by remember { mutableStateOf<Node?>(null) }
     var endNode by remember { mutableStateOf<Node?>(null) }
     var statusText by remember(statusChooseStart) { mutableStateOf(statusChooseStart) }
@@ -104,12 +116,23 @@ fun NavigatorScreen(
     var openNodes by remember { mutableStateOf<List<Node>>(emptyList()) }
     var closedNodes by remember { mutableStateOf<List<Node>>(emptyList()) }
     var isControlPanelVisible by remember { mutableStateOf(false) }
+    var isDrawingMode by remember { mutableStateOf(false) }
+    var inkStrokes by remember { mutableStateOf<List<List<Offset>>>(emptyList()) }
+    var mapCanvasSize by remember { mutableStateOf(IntSize.Zero) }
+
+    val barrierCells = remember(inkStrokes, mapCanvasSize, mapData.width, mapData.length) {
+        if (mapCanvasSize.width == 0 || mapCanvasSize.height == 0) {
+            emptySet()
+        } else {
+            inkStrokesToBarrierCells(inkStrokes, mapCanvasSize, mapData.width, mapData.length)
+        }
+    }
 
     val algorithm = remember { AStarAlgorithm(mapData) }
 
-    LaunchedEffect(venueFocusMapPosition) {
+    LaunchedEffect(venueFocusMapPosition, barrierCells) {
         val pos = venueFocusMapPosition ?: return@LaunchedEffect
-        val node = mapPixelOffsetToWalkableNode(mapData, pos) ?: return@LaunchedEffect
+        val node = mapPixelOffsetToWalkableNode(mapData, pos, barrierCells) ?: return@LaunchedEffect
         searchJob?.cancel()
         isSearching = false
         startNode = null
@@ -131,10 +154,13 @@ fun NavigatorScreen(
             closedSet = closedNodes,
             start = startNode,
             end = endNode,
+            inkStrokes = inkStrokes,
+            isDrawingMode = isDrawingMode && !isSearching,
             modifier = Modifier.fillMaxSize(),
             onMapClick = { node ->
-                if (isSearching) return@MapSection
-                val nearest = findNearestWalkable(mapData, node.x, node.y) ?: return@MapSection
+                if (isSearching || isDrawingMode) return@MapSection
+                val nearest = findNearestWalkable(mapData, node.x, node.y, barrierCells)
+                    ?: return@MapSection
                 when {
                     startNode == null -> {
                         startNode = nearest
@@ -156,7 +182,16 @@ fun NavigatorScreen(
                         statusText = statusStartUpdated
                     }
                 }
-            }
+            },
+            onInkStrokeStart = { offset ->
+                inkStrokes = inkStrokes + listOf(listOf(offset))
+            },
+            onInkStrokeAppend = { point ->
+                if (inkStrokes.isEmpty()) return@MapSection
+                val lastStroke = inkStrokes.last()
+                inkStrokes = inkStrokes.dropLast(1) + listOf(lastStroke + listOf(point))
+            },
+            onCanvasSizeChanged = { mapCanvasSize = it }
         )
 
         if (isControlPanelVisible) {
@@ -215,7 +250,8 @@ fun NavigatorScreen(
                                 end = end,
                                 speedMs = 2L,
                                 maxDurationMs = 10_000L,
-                                callbackStride = 10
+                                callbackStride = 10,
+                                userBarriers = barrierCells
                             ) { state ->
                                 scope.launch {
                                     openNodes = state.openSet
@@ -248,6 +284,40 @@ fun NavigatorScreen(
             )
         }
 
+        ExtendedFloatingActionButton(
+            onClick = { isDrawingMode = !isDrawingMode },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp)
+                .semantics { contentDescription = drawingModeLabel },
+            containerColor = if (isDrawingMode) TGU_Gold else Color.White,
+            contentColor = TGU_Blue,
+            expanded = true,
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp)
+                )
+            },
+            text = { Text(drawingModeLabel) }
+        )
+
+        OutlinedButton(
+            onClick = { inkStrokes = emptyList() },
+            enabled = inkStrokes.isNotEmpty(),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+                .semantics { contentDescription = clearDrawingLabel },
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = TGU_Blue,
+                disabledContentColor = TGU_Blue.copy(alpha = 0.38f)
+            )
+        ) {
+            Text(clearDrawingLabel)
+        }
+
         FloatingActionButton(
             onClick = { isControlPanelVisible = !isControlPanelVisible },
             modifier = Modifier
@@ -272,8 +342,13 @@ fun MapSection(
     closedSet: List<Node>,
     start: Node?,
     end: Node?,
+    inkStrokes: List<List<Offset>>,
+    isDrawingMode: Boolean,
     modifier: Modifier = Modifier,
-    onMapClick: (Node) -> Unit
+    onMapClick: (Node) -> Unit,
+    onInkStrokeStart: (Offset) -> Unit,
+    onInkStrokeAppend: (Offset) -> Unit,
+    onCanvasSizeChanged: (IntSize) -> Unit = {}
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "search_spread")
     val openPulse by infiniteTransition.animateFloat(
@@ -295,22 +370,40 @@ fun MapSection(
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .onSizeChanged { contentSize = it }
-                .pointerInput(mapData, contentSize) {
-                    detectTapGestures { tapOffset ->
-                        if (contentSize.width == 0 || contentSize.height == 0) return@detectTapGestures
-                        val node = MapCoordinateTransformer.tapToGrid(
-                            tapOffset = tapOffset,
-                            canvasWidth = contentSize.width.toFloat(),
-                            canvasHeight = contentSize.height.toFloat(),
-                            mapData = mapData
+                .onSizeChanged {
+                    contentSize = it
+                    onCanvasSizeChanged(it)
+                }
+                .pointerInput(mapData, contentSize, isDrawingMode) {
+                    if (isDrawingMode) {
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                if (contentSize.width == 0 || contentSize.height == 0) return@detectDragGestures
+                                onInkStrokeStart(offset)
+                            },
+                            onDrag = { change, _ ->
+                                change.consume()
+                                if (contentSize.width == 0 || contentSize.height == 0) return@detectDragGestures
+                                onInkStrokeAppend(change.position)
+                            }
                         )
-                        onMapClick(node)
+                    } else {
+                        detectTapGestures { tapOffset ->
+                            if (contentSize.width == 0 || contentSize.height == 0) return@detectTapGestures
+                            val node = MapCoordinateTransformer.tapToGrid(
+                                tapOffset = tapOffset,
+                                canvasWidth = contentSize.width.toFloat(),
+                                canvasHeight = contentSize.height.toFloat(),
+                                mapData = mapData
+                            )
+                            onMapClick(node)
+                        }
                     }
                 }
         ) {
             val scaleX = size.width / mapData.width.toFloat()
             val scaleY = size.height / mapData.length.toFloat()
+            val penWidth = 7f / currentScale
 
             closedSet.takeLast(4000).forEach { node ->
                 drawCircle(
@@ -326,6 +419,38 @@ fun MapSection(
                     radius = (2.8f / currentScale).coerceAtLeast(1.1f),
                     center = Offset(node.x * scaleX, node.y * scaleY)
                 )
+            }
+
+            val inkStyle = Stroke(
+                width = penWidth,
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
+            )
+            inkStrokes.forEach { stroke ->
+                when {
+                    stroke.isEmpty() -> Unit
+                    stroke.size == 1 -> {
+                        val c = stroke[0]
+                        drawCircle(
+                            color = TGU_Blue.copy(alpha = 0.92f),
+                            radius = (penWidth * 0.55f).coerceAtLeast(1.5f),
+                            center = c
+                        )
+                    }
+                    else -> {
+                        val androidPath = Path().apply {
+                            moveTo(stroke[0].x, stroke[0].y)
+                            for (i in 1 until stroke.size) {
+                                lineTo(stroke[i].x, stroke[i].y)
+                            }
+                        }
+                        drawPath(
+                            path = androidPath,
+                            color = TGU_Blue.copy(alpha = 0.92f),
+                            style = inkStyle
+                        )
+                    }
+                }
             }
 
             if (path.isNotEmpty()) {
@@ -512,18 +637,31 @@ private fun LegendItem(color: Color, text: String) {
     }
 }
 
-private fun mapPixelOffsetToWalkableNode(mapData: MapData, offset: Offset): Node? {
+private fun mapPixelOffsetToWalkableNode(
+    mapData: MapData,
+    offset: Offset,
+    barrierCells: Set<Pair<Int, Int>> = emptySet()
+): Node? {
     val gx = (offset.x / CAMPUS_MAP_WIDTH_PX * mapData.width).toInt().coerceIn(0, mapData.width - 1)
     val gy =
         (offset.y / CAMPUS_MAP_HEIGHT_PX * mapData.length).toInt().coerceIn(0, mapData.length - 1)
-    return findNearestWalkable(mapData, gx, gy)
+    return findNearestWalkable(mapData, gx, gy, barrierCells)
 }
 
-private fun findNearestWalkable(mapData: MapData, x: Int, y: Int): Node? {
+private fun findNearestWalkable(
+    mapData: MapData,
+    x: Int,
+    y: Int,
+    barrierCells: Set<Pair<Int, Int>> = emptySet()
+): Node? {
     if (mapData.width == 0 || mapData.length == 0) return null
+
+    fun isFree(cx: Int, cy: Int) =
+        mapData.isAvailable(cx, cy) && (cx to cy) !in barrierCells
+
     val clampedX = x.coerceIn(0, mapData.width - 1)
     val clampedY = y.coerceIn(0, mapData.length - 1)
-    if (mapData.isAvailable(clampedX, clampedY)) return Node(clampedX, clampedY)
+    if (isFree(clampedX, clampedY)) return Node(clampedX, clampedY)
 
     val maxRadius = maxOf(mapData.width, mapData.length)
     for (radius in 1..maxRadius) {
@@ -532,7 +670,7 @@ private fun findNearestWalkable(mapData: MapData, x: Int, y: Int): Node? {
                 val nx = clampedX + dx
                 val ny = clampedY + dy
                 if (nx !in 0 until mapData.width || ny !in 0 until mapData.length) continue
-                if (mapData.isAvailable(nx, ny)) return Node(nx, ny)
+                if (isFree(nx, ny)) return Node(nx, ny)
             }
         }
     }
