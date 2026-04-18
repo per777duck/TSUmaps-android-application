@@ -1,5 +1,6 @@
 package com.example.myapplication.features.path
 
+import android.annotation.SuppressLint
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -27,8 +28,6 @@ data class StartNodeResolveResult(
 )
 
 object UserLocationStartResolver {
-    // These bounds should contain the whole university grove.
-    // If your map image/bounds change, update these values.
     private val CAMPUS_GEO_BOUNDS = GeoBounds(
         northLatitude = 56.47720,
         southLatitude = 56.46870,
@@ -75,6 +74,7 @@ object UserLocationStartResolver {
         }
     }
 
+    @SuppressLint("MissingPermission")
     private suspend fun fetchCurrentLocation(
         client: com.google.android.gms.location.FusedLocationProviderClient
     ): Location? = suspendCancellableCoroutine { continuation ->
@@ -90,6 +90,7 @@ object UserLocationStartResolver {
         continuation.invokeOnCancellation { cancellationTokenSource.cancel() }
     }
 
+    @SuppressLint("MissingPermission")
     private suspend fun fetchLastLocation(
         client: com.google.android.gms.location.FusedLocationProviderClient
     ): Location? = suspendCancellableCoroutine { continuation ->
