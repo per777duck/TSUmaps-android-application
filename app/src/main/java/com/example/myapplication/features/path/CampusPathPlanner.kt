@@ -42,7 +42,7 @@ object CampusPathPlanner {
 
         val n = venues.size + 1
         val matrix = Array(n) { DoubleArray(n) { 0.0 } }
-        val nodesList = listOf(startNode) + venues.map { venueNodes[it.id]!! }
+        val nodesList = listOf(startNode) + venues.map { venueNodes.getValue(it.id) }
 
         for (i in 0 until n) {
             for (j in 0 until n) {

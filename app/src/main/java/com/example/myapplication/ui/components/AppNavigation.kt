@@ -71,6 +71,7 @@ import com.example.myapplication.data.map.MapMatrixLoader
 import com.example.myapplication.data.venues.MetricType
 import com.example.myapplication.data.venues.VenueType
 import com.example.myapplication.data.venues.listOfVenues
+import com.example.myapplication.ui.screens.AntsScreen
 import com.example.myapplication.ui.screens.ClusteringScreen
 import com.example.myapplication.ui.screens.DecisionTreeScreen
 import com.example.myapplication.ui.screens.GeneticMealRouteScreen

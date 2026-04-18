@@ -68,6 +68,30 @@ object MealRouteGeneticAlgorithm {
             return emptyResult
         }
 
+        if (venues.isEmpty()) {
+            val noVenuesResult = GeneticMealRouteResult(
+                bestTravelMinutes = 0,
+                route = emptyList(),
+                collectedItems = emptySet(),
+                missingItems = requiredItems,
+                fitnessScore = Double.POSITIVE_INFINITY
+            )
+            onIteration(
+                GeneticIterationUpdate(
+                    generation = 0,
+                    totalGenerations = generations,
+                    bestTravelMinutes = 0,
+                    route = emptyList(),
+                    collectedItems = emptySet(),
+                    missingItems = requiredItems,
+                    fitnessScore = Double.POSITIVE_INFINITY
+                )
+            )
+            return noVenuesResult
+        }
+
+        require(populationSize > 0) { "populationSize must be positive" }
+
         val random = Random(System.currentTimeMillis())
         val baseGenome = venues.map { it.id }
         var population = MutableList(populationSize) { baseGenome.shuffled(random) }
@@ -233,9 +257,11 @@ object MealRouteGeneticAlgorithm {
         random: Random,
         tournamentSize: Int = 4
     ): List<Int> {
-        val candidates =
-            List(tournamentSize) { scoredPopulation[random.nextInt(scoredPopulation.size)] }
-        return candidates.minByOrNull { it.second.fitness }!!.first
+        val size = scoredPopulation.size
+        require(size > 0) { "tournamentSelection: empty population" }
+        val k = tournamentSize.coerceAtMost(size).coerceAtLeast(1)
+        val candidates = List(k) { scoredPopulation[random.nextInt(size)] }
+        return candidates.minBy { it.second.fitness }.first
     }
 
     private fun orderedCrossover(
